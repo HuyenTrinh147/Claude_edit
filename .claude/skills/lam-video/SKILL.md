@@ -13,7 +13,9 @@ Bạn là người điều phối hệ thống vedit trong workspace này. Trao 
    - Link (Google Drive, YouTube, TikTok, link trực tiếp) → `vedit fetch "<link>"`. Nếu báo bị chặn mạng, nói rõ tên
      miền bị chặn và hai cách: thêm tên miền vào Allowed domains trong cài đặt môi trường, hoặc tải video lên
      GitHub vào thư mục `inbox/` của nhánh hiện tại rồi báo lại (khi đó chạy `git pull` và lấy file trong `inbox/`).
-   - Đường dẫn file trong workspace → dùng luôn. Không có video → hỏi người dùng.
+   - File người dùng tải lên trong chat (nằm ở `/root/.claude/uploads/...`) → `vedit fetch "<đường dẫn>"` để chép
+     vào `inbox/`; đổi tên ngắn gọn nếu tên gốc dài.
+   - Đường dẫn file trong workspace → dùng luôn. Không có video → hỏi người dùng (cách dễ nhất: tải file thẳng vào chat).
 3. **Làm rõ yêu cầu** chỉ khi thiếu mục tiêu. Mặc định: TikTok, khoảng 30 giây, tiếng Việt.
 4. **Phân tích**: `vedit analyze "<video>" --name "<tên ngắn>"` → ghi lại slug dự án.
 5. **Agent 2** — gọi Agent tool với `subagent_type: video-scriptwriter`, prompt gồm: slug, đường dẫn video, mục tiêu,

@@ -172,6 +172,7 @@ Mở repo này trong Claude Code (web, app hoặc CLI) rồi chat. Claude điề
 Hoặc nói tự nhiên: *"dựng video này thành TikTok 30s review quán cà phê, lưu kịch bản lên Drive"*.
 
 **Đưa video vào** (`vedit fetch` lưu vào `inbox/`):
+- **Dễ nhất: tải file video thẳng vào khung chat** của Claude Code rồi nói mục tiêu.
 - Link Google Drive (chia sẻ "Bất kỳ ai có đường liên kết"), YouTube, TikTok hoặc link tải trực tiếp. Trên Claude Code
   web, mạng của môi trường có thể chặn các trang này → vào cài đặt môi trường (menu môi trường ở thanh tiêu đề →
   Edit → Network access) thêm `drive.google.com`, `drive.usercontent.google.com` (và `youtube.com`, `tiktok.com`

@@ -12,7 +12,8 @@ ANTHROPIC_API_KEY. Các bước không cần AI (`vedit fetch / analyze / valida
 - Lệnh tắt cho người dùng (`.claude/skills/`): `/lam-video` (trọn quy trình), `/kich-ban` (Agent 2),
   `/sua-video` (Agent 3), `/nghien-cuu` (Agent 1). Người dùng nói tự nhiên ("dựng video này cho TikTok...") thì
   làm theo đúng quy trình của skill tương ứng.
-- Video vào: `vedit fetch "<link>"` → `inbox/`. Mạng của môi trường có thể chặn Drive/YouTube/TikTok; khi đó nêu
+- Video vào: người dùng tải file thẳng trong chat (xuất hiện ở `/root/.claude/uploads/...`) hoặc gửi link;
+  `vedit fetch "<đường dẫn/link>"` → `inbox/`. Mạng của môi trường có thể chặn Drive/YouTube/TikTok; khi đó nêu
   tên miền bị chặn và hai cách: thêm vào Allowed domains trong cài đặt môi trường, hoặc tải video lên GitHub vào
   `inbox/` của nhánh hiện tại rồi `git pull`.
 - Kết quả ra: gửi `final.mp4`, `final.jpg`, `script.md` bằng SendUserFile. Kịch bản lên Google Drive bằng công cụ

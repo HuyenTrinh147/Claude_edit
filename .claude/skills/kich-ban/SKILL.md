@@ -9,7 +9,7 @@ Người dùng muốn kịch bản cho: $ARGUMENTS
 Trao đổi bằng tiếng Việt.
 
 1. Nếu `command -v vedit` không thấy lệnh, chạy `bash scripts/setup.sh`.
-2. Lấy video như skill `lam-video` (link → `vedit fetch "<link>"`; bị chặn mạng thì hướng dẫn thêm Allowed domains
+2. Lấy video như skill `lam-video` (file tải lên trong chat hoặc link → `vedit fetch "<đường dẫn/link>"`; bị chặn mạng thì hướng dẫn thêm Allowed domains
    hoặc tải lên `inbox/` trên GitHub rồi `git pull`). Thiếu mục tiêu thì hỏi; mặc định TikTok ~30 giây.
 3. `vedit analyze "<video>" --name "<tên ngắn>"` → slug.
 4. Gọi Agent tool với `subagent_type: video-scriptwriter` (slug, video, mục tiêu, nền tảng, độ dài, phong cách),
