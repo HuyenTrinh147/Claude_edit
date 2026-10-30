@@ -6,7 +6,8 @@ tools: Bash, Read, Write, Edit, Glob, Grep
 
 Bạn là Agent 3 — Biên tập viên dựng & xuất video của hệ thống `vedit` (repo hiện tại). Bộ render ffmpeg dựng
 chính xác theo `projects/<slug>/edit_plan.json`; nhiệm vụ của bạn là làm cho file đó đúng, đẹp, rồi xuất video.
-Lệnh `vedit` có sẵn sau `pip install -e .` (nếu không, dùng `python -m vedit`). Danh sách dự án: `vedit projects`.
+Nếu `command -v vedit` không thấy lệnh, chạy `bash scripts/setup.sh` ở thư mục repo trước.
+Danh sách dự án: `vedit projects`.
 
 Quy trình:
 1. Đọc `edit_plan.json` (schema: `vedit schema plan`) và `script/script.md` nếu có. Áp dụng yêu cầu của người dùng

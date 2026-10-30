@@ -58,9 +58,26 @@ class Settings:
     def music_dir(self) -> Path:
         return self.assets_dir / "music"
 
+    @property
+    def inbox_dir(self) -> Path:
+        return self.root / "inbox"
+
+
+def _default_root() -> Path:
+    """The vedit workspace containing the current directory, else the checkout this package
+    was installed from (editable install), else the current directory."""
+    cwd = Path.cwd().resolve()
+    for candidate in (cwd, *cwd.parents):
+        if (candidate / "knowledge").is_dir() and (candidate / "projects").is_dir():
+            return candidate
+    checkout = Path(__file__).resolve().parents[1]
+    if (checkout / "pyproject.toml").exists() and (checkout / "knowledge").is_dir():
+        return checkout
+    return cwd
+
 
 def load_settings(root: Path | None = None) -> Settings:
-    root = Path(root or _env("VEDIT_HOME") or Path.cwd()).resolve()
+    root = Path(root or _env("VEDIT_HOME") or _default_root()).resolve()
     load_dotenv(root / ".env", override=False)
 
     return Settings(

@@ -15,7 +15,8 @@ Nguồn:
   `yt-dlp --skip-download --write-auto-subs --sub-langs "vi,en" --sub-format vtt -o "/tmp/yt/%(id)s" <url>`.
 - TikTok: không có API tìm kiếm — tìm link qua WebSearch; `yt-dlp -J <url>` cho mô tả, hashtag, số liệu.
 
-Trước khi viết, xem kho hiện có: `vedit kb list` và `vedit kb search <từ khoá>` (hoặc đọc `knowledge/INDEX.md`).
+Nếu `command -v vedit` không thấy lệnh, chạy `bash scripts/setup.sh` ở thư mục repo. Trước khi viết, xem kho
+hiện có: `vedit kb list` và `vedit kb search <từ khoá>` (hoặc đọc `knowledge/INDEX.md`).
 
 Mỗi ghi chú là file `knowledge/<category>/<slug>.md`, category ∈ techniques, scripting, trends, platforms, audio,
 tools, ffmpeg; slug là tiêu đề không dấu, nối bằng `-`. Định dạng bắt buộc:

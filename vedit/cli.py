@@ -34,6 +34,16 @@ def cmd_research(args, settings) -> None:
     print(f"\nKho kiến thức: {settings.knowledge_dir / 'INDEX.md'}")
 
 
+def cmd_fetch(args, settings) -> None:
+    from .fetch import fetch_video
+    from .media import probe
+
+    path = fetch_video(args.source, settings.inbox_dir)
+    info = probe(path)
+    print(f"✓ {path}\n  {info.width}x{info.height} {info.orientation}, {info.duration:.1f}s, "
+          f"{info.size_bytes / 1e6:.1f} MB, âm thanh: {'có' if info.has_audio else 'không'}")
+
+
 def cmd_analyze(args, settings) -> None:
     from .pipeline import analyze
 
@@ -253,6 +263,10 @@ def build_parser() -> argparse.ArgumentParser:
         sp.add_argument("--transcript", type=Path, help="File phụ đề .srt/.vtt có sẵn (thay cho nhận dạng giọng nói)")
         sp.add_argument("--drive", action="store_true", help="Tạo thư mục Google Drive và tải kết quả lên")
 
+    f = sub.add_parser("fetch", help="Tải video vào inbox/ từ link Google Drive, YouTube, TikTok... hoặc link trực tiếp")
+    f.add_argument("source", help="URL hoặc đường dẫn file")
+    f.set_defaults(func=cmd_fetch)
+
     a = sub.add_parser("analyze", help="Phân tích video (cảnh, khoảng lặng, transcript, khung hình) — không dùng AI")
     a.add_argument("video")
     a.add_argument("--name")
@@ -326,6 +340,7 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     settings = load_settings()
     from .agents.base import AgentError
+    from .fetch import FetchError
     from .gdrive import DriveError
     from .media import MediaError
     from .project import ProjectError
@@ -333,7 +348,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         args.func(args, settings)
-    except (AgentError, DriveError, MediaError, ProjectError, RenderError) as e:
+    except (AgentError, DriveError, FetchError, MediaError, ProjectError, RenderError) as e:
         print(f"\n✗ {e}", file=sys.stderr)
         return 1
     except KeyboardInterrupt:

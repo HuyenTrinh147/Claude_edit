@@ -23,9 +23,13 @@ flowchart LR
     R -. --drive .-> GD
 ```
 
+> **Cách dễ nhất:** mở repo trong Claude Code và gõ `/lam-video <link video> <mục tiêu>` — xem mục
+> [Dùng ngay trong Claude Code](#dùng-ngay-trong-claude-code-không-cần-cài-không-cần-api-key). Phần cài đặt dưới
+> đây dành cho chạy trên máy của bạn bằng Claude API.
+
 ## Cài đặt
 
-Cần **Python 3.10+** và **ffmpeg** (có libass — bản phổ thông đều có).
+Cần **Python 3.10+** và **ffmpeg** (có libass — bản phổ thông đều có). Hoặc chạy `bash scripts/setup.sh`.
 
 ```bash
 # macOS: brew install ffmpeg      Ubuntu: sudo apt install ffmpeg      Windows: winget install ffmpeg
@@ -77,6 +81,7 @@ vedit render quan-cafe --preview    # render lại không cần AI (nhanh, nửa
 vedit validate quan-cafe            # kiểm tra edit_plan.json sau khi sửa tay
 vedit drive sync quan-cafe          # tải kịch bản + video lên Google Drive
 vedit projects                      # danh sách dự án & trạng thái
+vedit fetch "<link Drive/YouTube/TikTok>"   # tải video vào inbox/
 ```
 
 ## Chi tiết 3 agent
@@ -151,13 +156,33 @@ Agent 2 chỉ cần **tạo thư mục và tải file** nên dùng quyền hẹp
 (Service account cũng được hỗ trợ — xem `.env.example` — nhưng service account không có dung lượng riêng, nên phải
 dùng thư mục trong Shared Drive.)
 
-## Dùng ngay trong Claude Code
+## Dùng ngay trong Claude Code (không cần cài, không cần API key)
 
-Thư mục `.claude/agents/` có 3 subagent tương ứng (`video-researcher`, `video-scriptwriter`, `video-editor`).
-Trong Claude Code, chỉ cần nói ví dụ *"dùng video-scriptwriter lên kịch bản TikTok cho video ~/Videos/a.mp4"*.
-Các subagent này dùng công cụ web và Bash có sẵn của Claude Code cùng các lệnh `vedit analyze / validate / render`,
-nên **không cần ANTHROPIC_API_KEY riêng**. Nếu Claude Code có kết nối Google Drive, subagent kịch bản cũng có thể
-lưu kịch bản lên Drive qua kết nối đó.
+Mở repo này trong Claude Code (web, app hoặc CLI) rồi chat. Claude điều phối 3 subagent trong `.claude/agents/`
+(`video-researcher`, `video-scriptwriter`, `video-editor`) bằng công cụ web/Bash có sẵn của Claude Code, nên
+**không cần ANTHROPIC_API_KEY riêng**. Lần đầu mỗi phiên, Claude tự chạy `bash scripts/setup.sh` để cài `vedit`.
+
+| Gõ trong chat | Việc |
+|---|---|
+| `/lam-video <link video> <mục tiêu>` | Trọn quy trình: tải video → kịch bản theo trend → dựng → gửi `final.mp4` + thumbnail + kịch bản |
+| `/kich-ban <link video> <mục tiêu>` | Agent 2: chỉ ý tưởng + kịch bản (+ lưu Google Doc lên Drive) |
+| `/sua-video <dự án> <yêu cầu>` | Agent 3: sửa bằng lời ("chữ to hơn, bỏ cảnh 3") và xuất lại |
+| `/nghien-cuu <chủ đề>` | Agent 1: nghiên cứu & lưu vào kho kiến thức |
+
+Hoặc nói tự nhiên: *"dựng video này thành TikTok 30s review quán cà phê, lưu kịch bản lên Drive"*.
+
+**Đưa video vào** (`vedit fetch` lưu vào `inbox/`):
+- Link Google Drive (chia sẻ "Bất kỳ ai có đường liên kết"), YouTube, TikTok hoặc link tải trực tiếp. Trên Claude Code
+  web, mạng của môi trường có thể chặn các trang này → vào cài đặt môi trường (menu môi trường ở thanh tiêu đề →
+  Edit → Network access) thêm `drive.google.com`, `drive.usercontent.google.com` (và `youtube.com`, `tiktok.com`
+  nếu cần) vào Allowed domains, hoặc chọn mức truy cập rộng hơn.
+- Hoặc tải video lên GitHub vào thư mục `inbox/` của nhánh đang dùng (GitHub web giới hạn 25 MB/file) rồi báo Claude.
+
+**Nhận kết quả**: video, thumbnail, kịch bản được gửi thẳng trong chat; kịch bản lưu lên Google Drive thành Google Doc
+qua kết nối Drive của Claude. Workspace trên web là tạm thời — tải video về máy sau khi xong.
+
+**Cài sẵn cho mỗi phiên mới** (tuỳ chọn): thêm `cd Claude_edit && bash scripts/setup.sh` vào Setup script trong
+cài đặt môi trường.
 
 ## Cấu hình & chi phí
 
