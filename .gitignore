@@ -1,0 +1,23 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+
+# bí mật
+.env
+secrets/
+*client_secret*.json
+*service_account*.json
+gdrive_token.json
+
+# dự án chứa video gốc & video xuất — rất nặng, không đưa lên git
+projects/*
+!projects/.gitkeep
+
+# tài nguyên media của bạn (nhạc, font, logo) — bỏ dòng dưới nếu muốn commit
+assets/**/*.mp3
+assets/**/*.wav
+assets/**/*.m4a
