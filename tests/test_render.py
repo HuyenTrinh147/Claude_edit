@@ -1,10 +1,12 @@
+import json
 import re
+import subprocess
 
 import pytest
 
 from vedit.edl import EditPlan
 from vedit.media import probe
-from vedit.render import _ass_color, _ass_text, _ass_time, build_ass, build_command, render
+from vedit.render import _ass_color, _ass_text, _ass_time, build_ass, build_command, frame_layout, render
 
 
 def test_ass_helpers():
@@ -57,8 +59,8 @@ def test_build_command_graph(media, tmp_path):
     assert "zoompan=" in graph and "boxblur=" in graph and "sidechaincompress" in graph
     assert "subtitles=overlays.ass" in graph and (tmp_path / "w" / "overlays.ass").exists()
     assert re.search(r"atempo=1\.5", graph)
-    output_t = len(cmd) - 1 - cmd[::-1].index("-t")  # the output -t, after all the input options
-    assert float(cmd[output_t + 1]) == pytest.approx(p.duration)
+    total_frames = int(cmd[cmd.index("-frames:v") + 1])
+    assert total_frames / 25 == pytest.approx(p.duration, abs=0.5 / 25)
 
 
 def test_render_end_to_end(media, tmp_path):
@@ -80,3 +82,33 @@ def test_render_preview_is_half_size(media, tmp_path):
     info = probe(result.output)
     assert (info.width, info.height) == (180, 320)
     assert result.thumbnail is None
+
+
+def test_frame_layout_does_not_drift():
+    # 1.35s at 30fps = 40.5 frames: boundaries are rounded from exact offsets, never accumulated
+    p = EditPlan.model_validate({"clips": [{"source": "color:#000000", "duration": 1.35}] * 9})
+    frames, overlaps, total = frame_layout(p, 30)
+    assert total == round(9 * 1.35 * 30) and sum(frames) == total
+    assert set(frames) <= {40, 41} and overlaps == [0] * 9
+
+    p = EditPlan.model_validate({"clips": [
+        {"source": "color:#000000", "duration": 1.0},
+        {"source": "color:#000000", "duration": 1.0, "transition": {"duration": 0.3}},
+    ]})
+    frames, overlaps, total = frame_layout(p, 30)
+    assert frames == [30, 30] and overlaps == [0, 9] and total == 51
+
+
+def test_odd_length_clips_keep_audio_and_video_in_sync(media, tmp_path):
+    p = EditPlan.model_validate({
+        "sources": {"main": str(media["land"])},
+        "canvas": {"width": 180, "height": 320, "fps": 30},
+        "clips": [{"source": "main", "start": 0.1 + k * 1.4, "end": 1.45 + k * 1.4} for k in range(4)],
+        "export": {"encoder_preset": "ultrafast", "normalize_audio": False},
+    })
+    result = render(p, tmp_path / "sync.mp4", base_dir=tmp_path)
+    proc = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "stream=codec_type,nb_frames,duration",
+                           "-of", "json", str(result.output)], capture_output=True, text=True, check=True)
+    streams = {s["codec_type"]: s for s in json.loads(proc.stdout)["streams"]}
+    assert int(streams["video"]["nb_frames"]) == frame_layout(p, 30)[2] == round(4 * 1.35 * 30)
+    assert abs(float(streams["video"]["duration"]) - float(streams["audio"]["duration"])) < 1 / 30

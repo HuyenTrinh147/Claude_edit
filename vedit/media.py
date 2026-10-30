@@ -116,8 +116,9 @@ def probe(path: str | Path) -> MediaInfo:
     return _probe_cached(str(p), p.stat().st_mtime)
 
 
-def detect_scenes(path: Path, threshold: float = 0.3, min_scene: float = 0.8) -> list[tuple[float, float]]:
-    """Shot boundaries via ffmpeg's scene score. Returns (start, end) pairs covering the video."""
+def detect_scenes(path: Path, threshold: float = 0.15, min_scene: float = 0.8) -> list[tuple[float, float]]:
+    """Shot boundaries via ffmpeg's scene score. Returns (start, end) pairs covering the video.
+    0.15 catches soft phone-camera cuts that 0.3 misses, without firing on ordinary hand motion."""
     info = probe(path)
     proc = run([
         "ffmpeg", "-hide_banner", "-nostats", "-i", str(path), "-an",

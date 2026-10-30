@@ -211,6 +211,28 @@ def build_ass(plan: EditPlan, font: str) -> str:
 # ---- ffmpeg graph ----------------------------------------------------------------------
 
 AUDIO_FMT = "aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo"
+SAMPLE_RATE = 48000
+
+
+def frame_layout(plan: EditPlan, fps: int) -> tuple[list[int], list[int], int]:
+    """Lay the timeline out in whole frames: frames per clip, frames each clip overlaps the previous one
+    (transition length, 0 for a hard cut) and total frames. Clip boundaries are rounded from the plan's
+    exact offsets rather than summed from rounded lengths, so video, audio and text never drift apart by
+    more than half a frame, however many clips there are."""
+    frames: list[int] = []
+    overlaps: list[int] = []
+    prev_end = 0
+    for clip, offset in zip(plan.clips, plan.clip_offsets()):
+        start = round(offset * fps) if clip.transition else prev_end
+        end = max(start + 1, round((offset + clip.timeline_duration) * fps))
+        overlap = 0
+        if clip.transition and frames:
+            overlap = min(max(prev_end - start, 1), frames[-1] - 1, end - start - 1)
+            start = prev_end - overlap
+        frames.append(end - start)
+        overlaps.append(overlap)
+        prev_end = end
+    return frames, overlaps, prev_end
 
 
 def build_command(
@@ -228,7 +250,14 @@ def build_command(
     scale = 0.5 if preview else 1.0
     W, H = _even(canvas.width * scale), _even(canvas.height * scale)
     fps = min(canvas.fps, 30) if preview else canvas.fps
-    total = plan.duration
+    clip_frames, overlaps, total_frames = frame_layout(plan, fps)
+    total = total_frames / fps
+
+    def secs(n_frames: int) -> str:
+        return f"{n_frames / fps:.6f}"
+
+    def samples(n_frames: int) -> int:
+        return round(n_frames * SAMPLE_RATE / fps)
 
     inputs: list[str] = []
     n_inputs = 0
@@ -242,7 +271,7 @@ def build_command(
 
     # 1) per-clip video + audio chains -> [v{i}] [a{i}]
     for i, clip in enumerate(plan.clips):
-        dur = clip.timeline_duration
+        n = clip_frames[i]
         has_audio = False
         if clip.is_color:
             color = clip.source.split(":", 1)[1].lstrip("#")
@@ -274,20 +303,19 @@ def build_command(
 
         post = []
         if clip.zoom != "none":
-            frames = max(1, round(dur * fps))
             a = clip.zoom_amount
-            z = f"1+{a:g}*on/{frames}" if clip.zoom == "in" else f"1+{a:g}-{a:g}*on/{frames}"
+            z = f"1+{a:g}*on/{n}" if clip.zoom == "in" else f"1+{a:g}-{a:g}*on/{n}"
             post.append(f"zoompan=z='{z}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s={W}x{H}:fps={fps}")
         post += ["setsar=1", "format=yuv420p", "tpad=stop_mode=clone:stop_duration=1",
-                 f"trim=duration={_num(dur)}", "setpts=PTS-STARTPTS", f"settb=1/{fps}"]
+                 f"trim=end_frame={n}", "setpts=PTS-STARTPTS", f"settb=1/{fps}"]
         graph.append(f"[c{i}]{','.join(post)}[v{i}]")
 
         if has_audio:
             achain = ["asetpts=PTS-STARTPTS", *_atempo_chain(clip.speed), f"volume={clip.volume:g}", AUDIO_FMT,
-                      "apad", f"atrim=duration={_num(dur)}", "asetpts=PTS-STARTPTS"]
+                      "apad", f"atrim=end_sample={samples(n)}", "asetpts=PTS-STARTPTS"]
             graph.append(f"[{idx}:a]{','.join(achain)}[a{i}]")
         else:
-            graph.append(f"anullsrc=r=48000:cl=stereo,atrim=duration={_num(dur)},{AUDIO_FMT}[a{i}]")
+            graph.append(f"anullsrc=r={SAMPLE_RATE}:cl=stereo,atrim=end_sample={samples(n)},{AUDIO_FMT}[a{i}]")
 
     # 2) join: concat runs of hard cuts, xfade/acrossfade at transitions
     groups: list[list[int]] = [[0]]
@@ -306,21 +334,22 @@ def build_command(
         return f"gv{tag}", f"ga{tag}"
 
     cur_v, cur_a = concat(groups[0], "0")
-    cur_len = sum(plan.clips[k].timeline_duration for k in groups[0])
+    cur_len = sum(clip_frames[k] for k in groups[0])
     for g, idxs in enumerate(groups[1:], start=1):
         gv, ga = concat(idxs, str(g))
         tr = plan.clips[idxs[0]].transition
         assert tr is not None
-        offset = cur_len - tr.duration
-        graph.append(f"[{cur_v}][{gv}]xfade=transition={tr.type}:duration={_num(tr.duration)}:"
-                     f"offset={_num(offset)}[xv{g}]")
-        graph.append(f"[{cur_a}][{ga}]acrossfade=d={_num(tr.duration)}:c1=tri:c2=tri[xa{g}]")
+        overlap = overlaps[idxs[0]]
+        offset = cur_len - overlap
+        graph.append(f"[{cur_v}][{gv}]xfade=transition={tr.type}:duration={secs(overlap)}:"
+                     f"offset={secs(offset)}[xv{g}]")
+        graph.append(f"[{cur_a}][{ga}]acrossfade=ns={samples(overlap)}:c1=tri:c2=tri[xa{g}]")
         cur_v, cur_a = f"xv{g}", f"xa{g}"
-        cur_len = offset + sum(plan.clips[k].timeline_duration for k in idxs)
+        cur_len = offset + sum(clip_frames[k] for k in idxs)
 
     # 3) image overlays
     for k, img in enumerate(plan.images):
-        idx = add_input("-loop", "1", "-t", _num(total), "-i", str(plan.resolve(img.path, base_dir)))
+        idx = add_input("-loop", "1", "-t", _num(total + 1), "-i", str(plan.resolve(img.path, base_dir)))
         end = img.end if img.end is not None else total
         graph.append(f"[{idx}:v]scale={_even(img.width * W)}:-2,format=rgba,"
                      f"colorchannelmixer=aa={img.opacity:g}[img{k}]")
@@ -377,7 +406,7 @@ def build_command(
     final_audio = []
     if plan.export.normalize_audio:
         final_audio += ["loudnorm=I=-14:TP=-1.5:LRA=11", AUDIO_FMT]
-    final_audio += [f"atrim=duration={_num(total)}"]
+    final_audio += [f"atrim=end_sample={samples(total_frames)}"]
     graph.append(f"[{mixed}]{','.join(final_audio)}[aout]")
 
     ex = plan.export
@@ -390,7 +419,7 @@ def build_command(
         "-map", "[vout]", "-map", "[aout]",
         "-c:v", "libx264", "-preset", preset, "-crf", str(crf), "-pix_fmt", "yuv420p", "-r", str(fps),
         "-c:a", "aac", "-b:a", "128k" if preview else ex.audio_bitrate, "-ar", "48000",
-        "-movflags", "+faststart", "-t", _num(total),
+        "-movflags", "+faststart", "-frames:v", str(total_frames),
         str(output.resolve()),
     ]
 
