@@ -40,6 +40,11 @@ TransitionType = Literal[
 
 HEX_COLOR = r"^#[0-9A-Fa-f]{6}$"
 TextPosition = Literal["top", "upper", "center", "lower", "bottom"]
+TextAnimation = Literal[
+    "none", "fade", "pop", "bounce", "slide_up", "slide_left", "typewriter", "word_pop", "blur_in", "wipe",
+]
+LOOK_PRESETS = ("none", "warm_food", "bright_clean", "film", "moody", "vivid", "bw")
+BUILTIN_SFX = ("pop", "click", "ding", "sparkle", "whoosh", "thud", "rise")
 
 
 class _Model(BaseModel):
@@ -120,8 +125,17 @@ class TextOverlay(_Model):
     box_color: str = Field("#000000", pattern=HEX_COLOR)
     box_opacity: float = Field(0.6, ge=0, le=1)
     bold: bool = True
-    font: str | None = None
-    animation: Literal["none", "fade", "pop", "slide_up"] = "pop"
+    font: str | None = Field(None, description="Family font, vd 'Be Vietnam Pro', 'Mali', 'Pacifico', 'Inter'")
+    animation: TextAnimation = Field(
+        "pop", description="Hiệu ứng xuất hiện: pop, bounce (nảy), typewriter (gõ chữ), word_pop (bật từng từ), "
+                           "slide_up, slide_left, blur_in, wipe (quét lộ dần), fade, none")
+    shape: Literal["none", "pill", "banner"] = Field(
+        "none", description="Nền sticker phía sau chữ: pill = viên bo tròn, banner = băng chữ nhật hơi nghiêng")
+    shape_color: str = Field("#FFFFFF", pattern=HEX_COLOR)
+    shape_opacity: float = Field(1.0, ge=0, le=1)
+    x: float | None = Field(None, ge=0, le=1, description="Tâm ngang tuỳ chỉnh (0..1); bỏ trống = giữa")
+    y: float | None = Field(None, ge=0, le=1, description="Tâm dọc tuỳ chỉnh (0..1); ghi đè position")
+    rotation: float = Field(0, ge=-30, le=30, description="Nghiêng chữ kiểu sticker (độ, dương = ngược kim đồng hồ)")
 
     @model_validator(mode="after")
     def _times(self) -> "TextOverlay":
@@ -164,8 +178,57 @@ class ImageOverlay(_Model):
     opacity: float = Field(1.0, ge=0, le=1)
 
 
+class Graphic(_Model):
+    """Motion graphic drawn over the video (vector, animated). Positions are fractions of the canvas."""
+
+    type: Literal["callout", "badge", "progress_bar", "highlight", "sparkles", "flash"] = Field(
+        description="callout = nhãn + đường chỉ vào vật; badge = huy hiệu tròn số bước (+ nhãn); "
+                    "progress_bar = thanh tiến trình chạy dần; highlight = vòng tròn nhấn mạnh; "
+                    "sparkles = lấp lánh quanh một điểm; flash = chớp sáng toàn màn hình")
+    start: float = Field(ge=0, description="Timeline (giây)")
+    end: float = Field(gt=0, description="Timeline (giây)")
+    x: float = Field(0.5, ge=0, le=1, description="callout/highlight/sparkles: điểm cần chỉ; badge: tâm huy hiệu")
+    y: float = Field(0.5, ge=0, le=1, description="Tương tự x; progress_bar: vị trí dọc của thanh")
+    label_x: float | None = Field(None, ge=0, le=1, description="callout: tâm nhãn (mặc định phía trên điểm)")
+    label_y: float | None = Field(None, ge=0, le=1)
+    text: str = Field("", description="callout: nhãn; badge: số/chữ trong huy hiệu")
+    label: str = Field("", description="badge: chữ phụ bên phải huy hiệu, vd 'Pha nước muối'")
+    color: str = Field("#FFFFFF", pattern=HEX_COLOR, description="Màu chính: nền nhãn / huy hiệu / thanh / vòng / sao")
+    text_color: str = Field("#1E1E1E", pattern=HEX_COLOR)
+    accent_color: str = Field("#FF5A36", pattern=HEX_COLOR, description="Màu nhấn: đường chỉ, chấm, viền")
+    size: int = Field(54, ge=16, le=200, description="Cỡ chữ (callout/badge) hoặc cỡ sao (sparkles)")
+    radius: float = Field(0.12, gt=0, le=0.6, description="highlight: bán kính vòng; sparkles: bán kính rải sao")
+    count: int = Field(7, ge=1, le=24, description="sparkles: số ngôi sao")
+    thickness: int = Field(10, ge=2, le=60, description="progress_bar: độ dày (px)")
+    font: str | None = None
+
+    @model_validator(mode="after")
+    def _check(self) -> "Graphic":
+        if self.end <= self.start:
+            raise ValueError(f"graphic {self.type}: end phải lớn hơn start")
+        if self.type in ("callout", "badge") and not self.text.strip():
+            raise ValueError(f"graphic {self.type}: cần 'text'")
+        return self
+
+
+class Motion(_Model):
+    """Camera move on the whole frame at a timeline moment — sync it to a sound or a beat."""
+
+    type: Literal["punch", "shake"] = Field(description="punch = zoom giật vào rồi trả về; shake = rung khung hình")
+    start: float = Field(ge=0, description="Timeline (giây)")
+    duration: float = Field(0.3, gt=0.05, le=3)
+    amount: float = Field(0.08, gt=0, le=0.4, description="punch: mức zoom (0.05-0.15); shake: biên độ (0.005-0.03)")
+
+
+class Look(_Model):
+    preset: Literal["none", "warm_food", "bright_clean", "film", "moody", "vivid", "bw"] = Field(
+        "none", description="Tông màu: warm_food (ấm, tươi cho đồ ăn), bright_clean, film, moody, vivid, bw")
+    vignette: float = Field(0, ge=0, le=1, description="Tối góc khung (0..1)")
+    grain: float = Field(0, ge=0, le=1, description="Hạt film (0..1)")
+
+
 class AudioTrack(_Model):
-    path: str
+    path: str = Field(description="File audio, hoặc âm thanh tổng hợp sẵn: " + ", ".join(f"'sfx:{n}'" for n in BUILTIN_SFX))
     role: Literal["music", "voiceover", "sfx"] = "music"
     start: float = Field(0, ge=0, description="Bắt đầu trên timeline (giây)")
     source_start: float = Field(0, ge=0, description="Điểm vào trong file audio (giây)")
@@ -175,6 +238,16 @@ class AudioTrack(_Model):
     fade_out: float = Field(1.0, ge=0, le=10)
     loop: bool = Field(True, description="Lặp lại nếu file ngắn hơn video")
     duck: bool = Field(True, description="Tự giảm âm lượng nhạc khi có giọng nói (chỉ áp dụng role=music)")
+
+    @property
+    def builtin(self) -> str | None:
+        return self.path[4:] if self.path.startswith("sfx:") else None
+
+    @model_validator(mode="after")
+    def _check_builtin(self) -> "AudioTrack":
+        if self.builtin is not None and self.builtin not in BUILTIN_SFX:
+            raise ValueError(f"âm thanh tổng hợp '{self.path}' không có; chọn: {', '.join(BUILTIN_SFX)}")
+        return self
 
 
 class ExportSettings(_Model):
@@ -196,6 +269,9 @@ class EditPlan(_Model):
     clips: list[Clip] = Field(min_length=1)
     texts: list[TextOverlay] = Field(default_factory=list)
     captions: Captions | None = None
+    graphics: list[Graphic] = Field(default_factory=list)
+    motion: list[Motion] = Field(default_factory=list)
+    look: Look = Field(default_factory=Look)
     images: list[ImageOverlay] = Field(default_factory=list)
     audio: list[AudioTrack] = Field(default_factory=list)
     export: ExportSettings = Field(default_factory=ExportSettings)
@@ -254,9 +330,10 @@ class EditPlan(_Model):
             extra = f" x{clip.speed}" if clip.speed != 1 else ""
             tr = f" [{clip.transition.type} {clip.transition.duration}s]" if clip.transition else ""
             lines.append(f"  #{i} @{off:6.2f}s  {clip.source} {span}{extra}{tr}  {clip.note}".rstrip())
-        if self.texts:
-            lines.append(f"  {len(self.texts)} text overlay, captions: "
-                         f"{len(self.captions.segments) if self.captions else 0} đoạn, audio: {len(self.audio)} track")
+        extras = [f"{len(self.texts)} chữ", f"{len(self.graphics)} đồ hoạ", f"{len(self.motion)} motion",
+                  f"captions {len(self.captions.segments) if self.captions else 0} đoạn", f"{len(self.audio)} audio",
+                  f"look {self.look.preset}"]
+        lines.append("  " + ", ".join(extras))
         return "\n".join(lines)
 
 
@@ -292,10 +369,18 @@ def validate_against_media(plan: EditPlan, base_dir: Path, probe) -> list[str]:
                 problems.append(f"caption #{i}: end phải lớn hơn start")
             elif seg.start >= total:
                 problems.append(f"caption #{i} bắt đầu ({seg.start:.2f}s) sau khi video kết thúc ({total:.2f}s)")
+    for i, g in enumerate(plan.graphics):
+        if g.start >= total:
+            problems.append(f"graphic #{i} ({g.type}) bắt đầu ({g.start:.2f}s) sau khi video kết thúc ({total:.2f}s)")
+    for i, m in enumerate(plan.motion):
+        if m.start >= total:
+            problems.append(f"motion #{i} bắt đầu ({m.start:.2f}s) sau khi video kết thúc ({total:.2f}s)")
     for i, img in enumerate(plan.images):
         if not plan.resolve(img.path, base_dir).exists():
             problems.append(f"image #{i}: không tìm thấy file {img.path}")
     for i, track in enumerate(plan.audio):
+        if track.builtin is not None:
+            continue
         path = plan.resolve(track.path, base_dir)
         if not path.exists():
             problems.append(f"audio #{i}: không tìm thấy file {path}")

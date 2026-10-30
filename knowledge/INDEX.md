@@ -4,7 +4,9 @@ _Tự động tạo bởi vedit — đừng sửa tay._
 
 ## techniques — Kỹ thuật dựng: nhịp cắt, chuyển cảnh, J/L-cut, zoom, màu, hiệu ứng
 
+- [Bộ công cụ đồ hoạ & hiệu ứng của vedit](techniques/bo-cong-cu-do-hoa-hieu-ung-cua-vedit.md) — _vedit, đồ hoạ, motion graphics, animation, callout, sfx, look, editplan_
 - [Nhịp cắt và kỹ thuật giữ chân người xem](techniques/nhip-cat-va-ky-thuat-giu-chan-nguoi-xem.md) — _jump cut, zoom, b-roll, nhịp, transition, phụ đề_
+- [Tư duy dựng sáng tạo cho video ngắn](techniques/tu-duy-dung-sang-tao-cho-video-ngan.md) — _sáng tạo, editor, nhịp, motion graphics, sfx, hook, checklist_
 
 ## scripting — Kịch bản: hook, cấu trúc, storytelling, CTA, viết lời thoại
 

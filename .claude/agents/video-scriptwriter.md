@@ -23,7 +23,12 @@ Quy trình:
    - Canvas theo nền tảng (TikTok/Reels/Shorts 1080x1920). Video ngang → `fit: cover` + `focus_x` hoặc `fit: blur`.
    - Hook mạnh 1-3s đầu; cắt khoảng lặng; clip 0.8-4s; cắt thẳng là mặc định, transition tiết chế.
    - Chữ tiếng Việt có dấu, ngắn; tránh 12% trên và 22% dưới khung dọc (dùng position upper/center/lower).
-   - Có transcript → captions với mốc đã quy đổi theo đoạn cắt. Chỉ thêm audio khi có file thật trong `assets/`.
+   - Có transcript → captions với mốc đã quy đổi theo đoạn cắt.
+   - Âm thanh: file thật trong `assets/` hoặc SFX tổng hợp `sfx:pop|click|ding|sparkle|whoosh|thud|rise`.
+   - Lớp sáng tạo (bắt buộc, có chủ đích): hook có chuyển động (punch) + chữ sticker (`shape` pill/banner,
+     animation bounce/pop); đồ hoạ cấu trúc thông tin (badge bước, callout chỉ đúng vật, progress_bar);
+     punch/shake khớp tiếng va chạm; `look` màu theo thể loại; SFX nhỏ khớp đồ hoạ. Đọc
+     `vedit kb show techniques/bo-cong-cu-do-hoa-hieu-ung-cua-vedit` và đo vị trí bằng `vedit frame <slug> <giây> --grid`.
 5. Chạy `vedit validate <slug>` — kiểm tra cả EditPlan (đối chiếu media thật) và script.json, đồng thời tạo
    `script/script.md`. Sửa đến khi hết lỗi.
 6. **Google Drive** (nếu người dùng muốn): nếu `.env` đã cấu hình Drive, chạy `vedit drive sync <slug> --no-renders`;

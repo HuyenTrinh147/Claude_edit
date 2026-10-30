@@ -1,7 +1,7 @@
 """Render an EditPlan to a video file with a single ffmpeg filter graph.
 
-Text overlays and captions are rendered through an ASS subtitle file (libass), which handles
-Vietnamese diacritics, outlines, boxes and simple animations far better than drawtext.
+Text, captions and motion graphics are drawn by libass from an ASS file built in `vedit.ass`;
+colour looks, punch/shake camera moves and synthesised sound effects are plain ffmpeg filters.
 """
 
 from __future__ import annotations
@@ -13,7 +13,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-from .edl import CaptionSegment, Captions, EditPlan, TextOverlay
+from .ass import ass_color as _ass_color  # noqa: F401  (re-exported for callers/tests)
+from .ass import ass_text as _ass_text  # noqa: F401
+from .ass import ass_time as _ass_time  # noqa: F401
+from .ass import build_ass
+from .edl import EditPlan
 from .media import extract_frame, probe, require_ffmpeg
 
 SAFE_FILTER_PATH = re.compile(r"^[\w./\-]+$")
@@ -54,164 +58,64 @@ def _atempo_chain(speed: float) -> list[str]:
     return parts
 
 
-# ---- ASS subtitles -------------------------------------------------------------------
-
-def _ass_color(hex_color: str, alpha: float = 1.0) -> str:
-    """#RRGGBB + opacity -> &HAABBGGRR (ASS alpha: 00 = opaque)."""
-    r, g, b = hex_color[1:3], hex_color[3:5], hex_color[5:7]
-    aa = round((1 - alpha) * 255)
-    return f"&H{aa:02X}{b}{g}{r}".upper()
-
-
-def _ass_time(t: float) -> str:
-    t = max(t, 0.0)
-    cs = int(round(t * 100))
-    h, cs = divmod(cs, 360000)
-    m, cs = divmod(cs, 6000)
-    s, cs = divmod(cs, 100)
-    return f"{h}:{m:02d}:{s:02d}.{cs:02d}"
-
-
-def _ass_text(text: str) -> str:
-    text = text.replace("\\n", "\n").replace("\\", "＼").replace("{", "(").replace("}", ")")
-    return text.replace("\r", "").replace("\n", r"\N")
-
-
-_POSITIONS = {  # position -> (alignment numpad, vertical margin as fraction of height)
-    "top": (8, 0.08),
-    "upper": (8, 0.20),
-    "center": (5, 0.0),
-    "lower": (2, 0.24),
-    "bottom": (2, 0.09),
-}
-
-
-def _anchor(position: str, width: int, height: int) -> tuple[int, int, int, int]:
-    align, margin_frac = _POSITIONS[position]
-    margin = int(height * margin_frac)
-    x = width // 2
-    y = {8: margin, 5: height // 2, 2: height - margin}[align]
-    return align, margin, x, y
-
-
-def _style_line(name: str, *, font: str, size: int, primary: str, secondary: str, outline_color: str,
-                back: str, bold: bool, border_style: int, outline: float, shadow: float, align: int,
-                margin_lr: int, margin_v: int) -> str:
-    return (f"Style: {name},{font},{size},{primary},{secondary},{outline_color},{back},{-1 if bold else 0},0,0,0,"
-            f"100,100,0,0,{border_style},{outline:g},{shadow:g},{align},{margin_lr},{margin_lr},{margin_v},1")
-
-
-def _text_events(texts: list[TextOverlay], width: int, height: int, font: str) -> tuple[list[str], list[str]]:
-    styles, events = [], []
-    margin_lr = int(width * 0.07)
-    for i, t in enumerate(texts):
-        align, margin_v, x, y = _anchor(t.position, width, height)
-        if t.box:
-            outline_color, border_style, outline = _ass_color(t.box_color, t.box_opacity), 3, max(t.size * 0.22, 6)
-        else:
-            outline_color, border_style, outline = _ass_color(t.outline_color), 1, t.outline
-        styles.append(_style_line(
-            f"T{i}", font=t.font or font, size=t.size, primary=_ass_color(t.color), secondary=_ass_color(t.color),
-            outline_color=outline_color, back=_ass_color("#000000", 0.5), bold=t.bold, border_style=border_style,
-            outline=outline, shadow=0 if t.box else 2, align=align, margin_lr=margin_lr, margin_v=margin_v,
-        ))
-        anim = {
-            "none": "",
-            "fade": r"{\fad(200,200)}",
-            "pop": r"{\fad(80,150)\fscx70\fscy70\t(0,140,\fscx108\fscy108)\t(140,240,\fscx100\fscy100)}",
-            "slide_up": rf"{{\an{align}\move({x},{y + int(height * 0.04)},{x},{y},0,220)\fad(150,150)}}",
-        }[t.animation]
-        events.append(f"Dialogue: 1,{_ass_time(t.start)},{_ass_time(t.end)},T{i},,0,0,0,,{anim}{_ass_text(t.text)}")
-    return styles, events
-
-
-def _estimate_words(seg: CaptionSegment) -> list[tuple[str, float, float]]:
-    if seg.words:
-        return [(w.text, w.start, w.end) for w in seg.words]
-    words = seg.text.split()
-    total_chars = sum(len(w) for w in words) or 1
-    out, cursor, span = [], seg.start, seg.end - seg.start
-    for w in words:
-        dur = span * len(w) / total_chars
-        out.append((w, cursor, cursor + dur))
-        cursor += dur
-    return out
-
-
-def _caption_events(caps: Captions, width: int, height: int, font: str) -> tuple[list[str], list[str]]:
-    align, margin_v, _, _ = _anchor(caps.position, width, height)
-    margin_lr = int(width * 0.08)
-    base = dict(font=caps.font or font, size=caps.size, primary=_ass_color(caps.color),
-                secondary=_ass_color(caps.color), back=_ass_color("#000000", 0.4), align=align,
-                margin_lr=margin_lr, margin_v=margin_v)
-    if caps.style == "boxed":
-        style = _style_line("Cap", outline_color=_ass_color("#000000", 0.55), bold=True, border_style=3,
-                            outline=max(caps.size * 0.2, 6), shadow=0, **base)
-    elif caps.style == "clean":
-        style = _style_line("Cap", outline_color=_ass_color("#000000"), bold=False, border_style=1,
-                            outline=3, shadow=1, **base)
-    else:  # bold_pop / karaoke
-        style = _style_line("Cap", outline_color=_ass_color("#000000"), bold=True, border_style=1,
-                            outline=max(caps.size * 0.08, 4), shadow=2, **base)
-
-    hl = _ass_color(caps.highlight_color)
-    events = []
-    for seg in caps.segments:
-        text = seg.text.upper() if caps.uppercase else seg.text
-        if caps.style != "karaoke":
-            anim = (r"{\fad(60,60)\fscx85\fscy85\t(0,120,\fscx100\fscy100)}" if caps.style == "bold_pop"
-                    else r"{\fad(80,80)}")
-            events.append(f"Dialogue: 0,{_ass_time(seg.start)},{_ass_time(seg.end)},Cap,,0,0,0,,{anim}{_ass_text(text)}")
-            continue
-        words = _estimate_words(seg)
-        if caps.uppercase:
-            words = [(w.upper(), s, e) for w, s, e in words]
-        for k, (_, w_start, _) in enumerate(words):
-            start = seg.start if k == 0 else w_start
-            end = words[k + 1][1] if k + 1 < len(words) else seg.end
-            if end <= start:
-                continue
-            parts = []
-            for j, (w, _, _) in enumerate(words):
-                w = _ass_text(w)
-                parts.append(rf"{{\c{hl}\fscx110\fscy110}}{w}{{\r}}" if j == k else w)
-            events.append(f"Dialogue: 0,{_ass_time(start)},{_ass_time(end)},Cap,,0,0,0,,{' '.join(parts)}")
-    return [style], events
-
-
-def build_ass(plan: EditPlan, font: str) -> str:
-    width, height = plan.canvas.width, plan.canvas.height
-    styles, events = _text_events(plan.texts, width, height, font)
-    if plan.captions and plan.captions.segments:
-        cap_styles, cap_events = _caption_events(plan.captions, width, height, font)
-        styles += cap_styles
-        events += cap_events
-    return "\n".join([
-        "[Script Info]",
-        "ScriptType: v4.00+",
-        f"PlayResX: {width}",
-        f"PlayResY: {height}",
-        "WrapStyle: 0",
-        "ScaledBorderAndShadow: yes",
-        "YCbCr Matrix: TV.709",
-        "",
-        "[V4+ Styles]",
-        "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, "
-        "Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, "
-        "MarginR, MarginV, Encoding",
-        *styles,
-        "",
-        "[Events]",
-        "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
-        *events,
-        "",
-    ])
-
-
 # ---- ffmpeg graph ----------------------------------------------------------------------
 
 AUDIO_FMT = "aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo"
 SAMPLE_RATE = 48000
+
+LOOKS = {
+    "warm_food": "eq=contrast=1.06:saturation=1.22:gamma=1.02,"
+                 "colorbalance=rs=0.05:gs=0.01:bs=-0.06:rm=0.04:bm=-0.04:rh=0.02:bh=-0.02,unsharp=5:5:0.35",
+    "bright_clean": "eq=brightness=0.035:contrast=1.05:saturation=1.08,unsharp=5:5:0.3",
+    "film": "curves=preset=vintage,eq=saturation=0.92:contrast=1.04",
+    "moody": "eq=contrast=1.12:saturation=0.82:brightness=-0.03,colorbalance=rs=-0.03:bs=0.05:rh=0.03",
+    "vivid": "eq=saturation=1.38:contrast=1.08,unsharp=5:5:0.3",
+    "bw": "hue=s=0,eq=contrast=1.12",
+}
+
+# Synthesised sound effects (no files needed): short, clean, and mixed on the voice bus.
+SFX = {
+    "pop": "aevalsrc='0.8*sin(2*PI*(260+900*exp(-t*38))*t)*exp(-t*26)':s=48000:d=0.2",
+    "click": "aevalsrc='0.7*sin(2*PI*2400*t)*exp(-t*140)+0.3*sin(2*PI*1200*t)*exp(-t*90)':s=48000:d=0.06",
+    "ding": "aevalsrc='0.45*(sin(2*PI*1568*t)+0.5*sin(2*PI*3136*t)+0.2*sin(2*PI*4704*t))*exp(-t*4.5)':s=48000:d=1.3",
+    "sparkle": "aevalsrc='0.22*(sin(2*PI*2637*t)*exp(-t*11)+gte(t,0.08)*sin(2*PI*3520*(t-0.08))*exp(-(t-0.08)*11)"
+               "+gte(t,0.16)*sin(2*PI*4186*(t-0.16))*exp(-(t-0.16)*11)"
+               "+gte(t,0.24)*sin(2*PI*5274*(t-0.24))*exp(-(t-0.24)*12))':s=48000:d=0.9",
+    "whoosh": "anoisesrc=d=0.6:c=pink:r=48000:a=0.5,bandpass=f=1400:width_type=h:w=1800,"
+              "afade=t=in:d=0.35:curve=exp,afade=t=out:st=0.35:d=0.25",
+    "thud": "aevalsrc='0.9*sin(2*PI*(55+90*exp(-t*22))*t)*exp(-t*11)':s=48000:d=0.4",
+    "rise": "aevalsrc='0.3*sin(2*PI*(300*t+700*t*t))*min(t/0.9,1)*exp(-max(t-0.9,0)*20)':s=48000:d=1.0",
+}
+
+
+def look_filters(plan: EditPlan) -> list[str]:
+    look = plan.look
+    filters = [LOOKS[look.preset]] if look.preset in LOOKS else []
+    if look.vignette > 0:
+        filters.append(f"vignette=angle={0.25 + 0.65 * look.vignette:.3f}")
+    if look.grain > 0:
+        filters.append(f"noise=c0s={int(4 + 16 * look.grain)}:c0f=t+u")
+    return filters
+
+
+def motion_filter(plan: EditPlan, fps: int, W: int, H: int) -> str | None:
+    """One zoompan over the whole timeline: punch = fast zoom-in that eases back out, shake = decaying jitter."""
+    if not plan.motion:
+        return None
+    z, x, y = ["1"], ["iw/2-(iw/zoom/2)"], ["ih/2-(ih/zoom/2)"]
+    for m in plan.motion:
+        a, d = round(m.start * fps), max(2, round(m.duration * fps))
+        win, p = f"between(on,{a},{a + d})", f"((on-{a})/{d})"
+        if m.type == "punch":
+            env = f"if(lt({p},0.2),sin(PI/2*{p}/0.2),cos(PI/2*({p}-0.2)/0.8))"
+            z.append(f"{m.amount:g}*if({win},{env},0)")
+        else:
+            decay = f"(1-{p})"
+            z.append(f"{2.2 * m.amount:g}*if({win},{decay},0)")
+            x.append(f"{m.amount:g}*iw*if({win},sin((on-{a})*2.4)*{decay},0)")
+            y.append(f"{m.amount:g}*ih*if({win},cos((on-{a})*3.1)*{decay},0)")
+    return (f"zoompan=z='{'+'.join(z)}':x='{'+'.join(x)}':y='{'+'.join(y)}'"
+            f":d=1:s={W}x{H}:fps={fps}")
 
 
 def frame_layout(plan: EditPlan, fps: int) -> tuple[list[int], list[int], int]:
@@ -347,7 +251,16 @@ def build_command(
         cur_v, cur_a = f"xv{g}", f"xa{g}"
         cur_len = offset + sum(clip_frames[k] for k in idxs)
 
-    # 3) image overlays
+    # 3) colour look + camera motion on the joined timeline
+    post = look_filters(plan)
+    move = motion_filter(plan, fps, W, H)
+    if move:
+        post.append(move)
+    if post:
+        graph.append(f"[{cur_v}]{','.join(post)}[vlook]")
+        cur_v = "vlook"
+
+    # 4) image overlays
     for k, img in enumerate(plan.images):
         idx = add_input("-loop", "1", "-t", _num(total + 1), "-i", str(plan.resolve(img.path, base_dir)))
         end = img.end if img.end is not None else total
@@ -357,10 +270,10 @@ def build_command(
                      f"enable='between(t,{_num(img.start)},{_num(end)})':eof_action=pass[vi{k}]")
         cur_v = f"vi{k}"
 
-    # 4) texts + captions via ASS
-    if plan.texts or (plan.captions and plan.captions.segments):
+    # 5) texts, captions and motion graphics via ASS
+    if plan.texts or plan.graphics or (plan.captions and plan.captions.segments):
         work_dir.mkdir(parents=True, exist_ok=True)
-        (work_dir / "overlays.ass").write_text(build_ass(plan, font), encoding="utf-8")
+        (work_dir / "overlays.ass").write_text(build_ass(plan, font, fonts_dir), encoding="utf-8")
         opts = "subtitles=overlays.ass"
         if fonts_dir and fonts_dir.is_dir() and SAFE_FILTER_PATH.match(str(fonts_dir.resolve())):
             opts += f":fontsdir={fonts_dir.resolve()}"
@@ -368,9 +281,16 @@ def build_command(
         cur_v = "vsub"
     graph.append(f"[{cur_v}]format=yuv420p[vout]")
 
-    # 5) audio: voice bus (clips + voiceover + sfx), music bus (ducked), loudness
+    # 6) audio: voice bus (clips + voiceover + sfx), music bus (ducked), loudness
     voice_tracks, music_tracks = [], []
     for k, track in enumerate(plan.audio):
+        if track.builtin is not None:
+            chain = [SFX[track.builtin], AUDIO_FMT, f"volume={track.volume:g}"]
+            if track.start > 0:
+                chain.append(f"adelay=delays={int(track.start * 1000)}:all=1")
+            graph.append(f"{','.join(chain)}[t{k}]")
+            voice_tracks.append(k)
+            continue
         dur = track.duration or max(total - track.start, 0.1)
         args = ["-stream_loop", "-1"] if track.loop and track.role == "music" else []
         idx = add_input(*args, "-ss", _num(track.source_start), "-i", str(plan.resolve(track.path, base_dir)))

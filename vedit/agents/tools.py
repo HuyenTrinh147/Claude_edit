@@ -188,12 +188,13 @@ def list_assets_tool(settings: Settings) -> list:
 
 def frame_tools(project: Project) -> list:
     @beta_tool
-    def view_frames(times: list[float], source: str = "main") -> list:
+    def view_frames(times: list[float], source: str = "main", grid: bool = False) -> list:
         """Xem khung hình của video nguồn tại các mốc thời gian (giây) để quyết định điểm cắt, khung crop, chữ.
 
         Args:
             times: Tối đa 12 mốc thời gian, tính theo giây trong file nguồn.
             source: 'main' (video đầu vào) hoặc đường dẫn file media khác.
+            grid: Vẽ lưới 10% có nhãn toạ độ 0-1 để đọc vị trí x/y cho callout, highlight, chữ.
         """
         path = project.input_path if source == "main" else Path(source).expanduser()
         if not path.exists():
@@ -204,7 +205,8 @@ def frame_tools(project: Project) -> list:
             if not 0 <= t < duration:
                 blocks.append({"type": "text", "text": f"t={t}s nằm ngoài video (dài {duration:.2f}s)"})
                 continue
-            frame = extract_frame(path, t, project.analysis_dir / "frames" / f"view_{path.stem}_{t:07.2f}.jpg")
+            name = f"view_{path.stem}_{t:07.2f}{'_grid' if grid else ''}.jpg"
+            frame = extract_frame(path, t, project.analysis_dir / "frames" / name, grid=grid)
             blocks += [{"type": "text", "text": f"t={t:.2f}s"}, image_block(frame)]
         return blocks
 

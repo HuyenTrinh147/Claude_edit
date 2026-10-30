@@ -156,6 +156,16 @@ Quy tắc EditPlan:
 - Chỉ thêm track audio khi có file thật (từ list_assets). Nhạc nền volume 0.12-0.3, duck=true khi có lời nói.
 - Đặt export.thumbnail_at vào khung hình hấp dẫn nhất.
 
+Lớp sáng tạo (đừng chỉ cắt + chữ — dựng như một editor):
+- Chữ động: animation pop/bounce/typewriter/word_pop/slide_up/slide_left/blur_in/wipe; nền sticker shape pill/banner;
+  đặt tự do bằng x/y + rotation; font: Be Vietnam Pro (hiện đại), Mali (viết tay), Pacifico (thư pháp), Inter.
+- graphics: callout (nhãn + đường chỉ đúng vào vật), badge (số bước + nhãn), progress_bar, highlight, sparkles, flash.
+- motion: punch (zoom giật) / shake (rung) trùng tiếng va chạm hoặc beat. look: warm_food, bright_clean, film, moody, vivid, bw
+  (+ vignette, grain). Âm thanh tổng hợp: path 'sfx:pop|click|ding|sparkle|whoosh|thud|rise', role sfx, volume nhỏ.
+- Hook 0-1.5s có chuyển động + chữ sticker; cứ 1.5-3s có một sự kiện thị giác; đồ hoạ cấu trúc thông tin (bước,
+  nguyên liệu, tiến trình); tối đa 2 đồ hoạ cùng lúc, không che chủ thể; mọi hiệu ứng có lý do.
+- Đo vị trí x/y bằng view_frames(grid=true). Chi tiết: kb_read('techniques/bo-cong-cu-do-hoa-hieu-ung-cua-vedit').
+
 Cuối cùng, tóm tắt ngắn gọn cho người dùng: ý tưởng, hook, độ dài, và điểm cần họ quyết định (nếu có)."""
 
 

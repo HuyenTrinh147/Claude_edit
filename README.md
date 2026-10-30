@@ -142,6 +142,14 @@ Một file JSON mô tả toàn bộ video. Ví dụ rút gọn (`vedit schema pl
 - Chữ & phụ đề render bằng **libass**: tiếng Việt có dấu, viền, hộp nền, hiệu ứng `pop` / `fade` / `slide_up`;
   phụ đề `clean`, `boxed`, `bold_pop`, `karaoke` (tô màu từ đang đọc).
 - Âm thanh: nhạc nền tự **giảm âm lượng khi có lời nói** (`duck`), fade in/out, lặp; voiceover/SFX đặt theo mốc.
+- **Lớp sáng tạo** (chi tiết: `knowledge/techniques/bo-cong-cu-do-hoa-hieu-ung-cua-vedit.md`):
+  - chữ động `bounce`, `typewriter`, `word_pop`, `slide_left`, `blur_in`, `wipe`… trên nền sticker `pill` / `banner`,
+    đặt tự do bằng `x`, `y`, `rotation`; font tiếng Việt kèm sẵn: Be Vietnam Pro, Mali, Pacifico;
+  - `graphics`: `callout` (nhãn + đường chỉ vào vật), `badge` (số bước), `progress_bar`, `highlight`, `sparkles`, `flash`;
+  - `motion`: `punch` (zoom giật) và `shake` (rung) khớp tiếng va chạm / beat;
+  - `look`: tông màu `warm_food`, `bright_clean`, `film`, `moody`, `vivid`, `bw` + vignette, hạt film;
+  - âm thanh hiệu ứng tổng hợp không cần file: `sfx:pop|click|ding|sparkle|whoosh|thud|rise`.
+- `vedit frame <dự án> <giây> --grid` trích khung hình có lưới toạ độ 0–1 để đặt đồ hoạ đúng vị trí vật.
 
 ## Google Drive
 

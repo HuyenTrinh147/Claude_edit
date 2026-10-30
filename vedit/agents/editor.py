@@ -63,14 +63,15 @@ def sample_times(plan: EditPlan, max_clips: int = 6, max_texts: int = 4) -> list
     return sorted({round(min(t, plan.duration - 0.05), 2) for t in times if t >= 0})
 
 
-def _frames(video: Path, times: list[float], out_dir: Path, width: int = 360) -> list[dict]:
+def _frames(video: Path, times: list[float], out_dir: Path, width: int = 360, grid: bool = False) -> list[dict]:
     duration = probe(video).duration
     blocks: list[dict] = []
     for t in times[:12]:
         if not 0 <= t < duration:
             blocks.append({"type": "text", "text": f"t={t}s nằm ngoài video (dài {duration:.2f}s)"})
             continue
-        frame = extract_frame(video, t, out_dir / f"{video.stem}_{t:07.2f}.jpg", width=width)
+        frame = extract_frame(video, t, out_dir / f"{video.stem}_{t:07.2f}{'_g' if grid else ''}.jpg", width=width,
+                              grid=grid)
         blocks += [{"type": "text", "text": f"{video.name} @ {t:.2f}s"}, image_block(frame)]
     return blocks
 
@@ -89,6 +90,16 @@ Quy trình gợi ý:
    view_frames để xem video nguồn khi cần chọn lại điểm cắt / focus_x.
 3. Sửa và render_preview lại cho tới khi đạt (thường 1-3 vòng; đừng sửa vụn vặt vô hạn).
 4. render_final để xuất bản chính thức.
+
+Lớp sáng tạo (đừng chỉ cắt + chữ — dựng như một editor):
+- Chữ động: animation pop/bounce/typewriter/word_pop/slide_up/slide_left/blur_in/wipe; nền sticker shape pill/banner;
+  đặt tự do bằng x/y + rotation; font: Be Vietnam Pro (hiện đại), Mali (viết tay), Pacifico (thư pháp), Inter.
+- graphics: callout (nhãn + đường chỉ đúng vào vật), badge (số bước + nhãn), progress_bar, highlight, sparkles, flash.
+- motion: punch (zoom giật) / shake (rung) trùng tiếng va chạm hoặc beat. look: warm_food, bright_clean, film, moody, vivid, bw
+  (+ vignette, grain). Âm thanh tổng hợp: path 'sfx:pop|click|ding|sparkle|whoosh|thud|rise', role sfx, volume nhỏ.
+- Hook 0-1.5s có chuyển động + chữ sticker; cứ 1.5-3s có một sự kiện thị giác; đồ hoạ cấu trúc thông tin (bước,
+  nguyên liệu, tiến trình); tối đa 2 đồ hoạ cùng lúc, không che chủ thể; mọi hiệu ứng có lý do.
+- Đo vị trí x/y bằng view_frames(grid=true). Chi tiết: kb_read('techniques/bo-cong-cu-do-hoa-hieu-ung-cua-vedit').
 
 Ghi nhớ: Clip.start/end tính theo giây NGUỒN; texts/captions/audio theo giây TIMELINE. Khi đổi độ dài/thứ tự clip,
 phải dời mốc texts/captions tương ứng. Kho kiến thức (kb_search) có các kỹ thuật dựng và công thức ffmpeg.
@@ -133,17 +144,18 @@ def run_editor(settings: Settings, project: Project, instructions: str | None = 
         return [header, *_frames(result.output, sample_times(plan), qa_dir)]
 
     @beta_tool
-    def inspect_render(times: list[float], which: str = "preview") -> list:
+    def inspect_render(times: list[float], which: str = "preview", grid: bool = False) -> list:
         """Xem khung hình của video đã render tại các mốc giây trên timeline.
 
         Args:
             times: Tối đa 12 mốc thời gian (giây).
             which: 'preview' hoặc 'final'.
+            grid: Vẽ lưới toạ độ 0-1 để chỉnh vị trí chữ/đồ hoạ.
         """
         result = state.get(which)
         if result is None:
             raise ToolError(f"Chưa có bản {which} — gọi render_{which} trước.")
-        return _frames(result.output, times, qa_dir)
+        return _frames(result.output, times, qa_dir, grid=grid)
 
     @beta_tool
     def render_final() -> str:

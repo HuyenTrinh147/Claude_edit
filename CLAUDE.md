@@ -24,8 +24,10 @@ ANTHROPIC_API_KEY. Các bước không cần AI (`vedit fetch / analyze / valida
 
 - `vedit/edl.py` — schema `EditPlan` (pydantic), hợp đồng giữa Agent 2 và Agent 3. Clip start/end = giây nguồn;
   texts/captions/audio = giây timeline.
-- `vedit/render.py` — EditPlan → một filter graph ffmpeg (concat/xfade, fit cover/contain/blur, zoompan, ASS qua
-  libass cho chữ & phụ đề, amix + sidechaincompress + loudnorm).
+- `vedit/render.py` — EditPlan → một filter graph ffmpeg (timeline theo khung hình nguyên, concat/xfade, fit
+  cover/contain/blur, look màu, punch/shake bằng zoompan, SFX tổng hợp bằng aevalsrc, amix + sidechaincompress + loudnorm).
+- `vedit/ass.py` — lớp libass: chữ động + nền sticker, phụ đề, đồ hoạ vector (callout, badge, progress bar, highlight,
+  sparkles, flash); `FontBook` chuẩn hoá cỡ chữ theo metric win của font và đổi tên family sang tên libass nhận.
 - `vedit/media.py` — ffprobe, dò cảnh/khoảng lặng, trích khung hình, faster-whisper (tuỳ chọn).
 - `vedit/agents/` — phiên bản chạy bằng Claude API (cần key) của 3 agent: `base.py` (tool runner streaming,
   web_search/web_fetch, caching, fallbacks), `tools.py`, `researcher.py`, `scriptwriter.py`, `editor.py`.

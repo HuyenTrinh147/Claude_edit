@@ -24,9 +24,9 @@ def test_build_ass_karaoke_and_overlays():
     })
     ass = build_ass(p, "Inter")
     assert "PlayResX: 1080" in ass and "PlayResY: 1920" in ass
-    assert "Style: T0,Inter,80" in ass and "Style: Cap,Inter" in ass
+    assert "Style: T0,Inter," in ass and "Style: Cap,Inter" in ass
     assert r"\move(" in ass and "Hook mạnh" in ass
-    karaoke = [line for line in ass.splitlines() if line.startswith("Dialogue: 0")]
+    karaoke = [line for line in ass.splitlines() if line.startswith("Dialogue") and ",Cap," in line]
     assert len(karaoke) == 3  # one event per word, current word highlighted
     assert all(r"\c&H0000E6FF" in line for line in karaoke)
 

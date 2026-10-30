@@ -159,10 +159,21 @@ def loudness(path: Path) -> dict:
     return {"mean_db": float(mean.group(1)) if mean else None, "peak_db": float(peak.group(1)) if peak else None}
 
 
-def extract_frame(path: Path, t: float, out: Path, width: int = 512) -> Path:
+# 10% grid with 0.1..0.9 labels: lets an agent read positions (EditPlan x/y fractions) off a frame
+GRID_FILTER = ",".join(
+    ["drawgrid=w=iw/10:h=ih/10:t=1:c=white@0.55"]
+    + [f"drawtext=text='{k / 10:.1f}':x=w*{k / 10:.1f}+3:y=3:fontsize=h/45:fontcolor=yellow:box=1:boxcolor=black@0.6"
+       for k in range(1, 10)]
+    + [f"drawtext=text='{k / 10:.1f}':x=3:y=h*{k / 10:.1f}+3:fontsize=h/45:fontcolor=cyan:box=1:boxcolor=black@0.6"
+       for k in range(1, 10)]
+)
+
+
+def extract_frame(path: Path, t: float, out: Path, width: int = 512, grid: bool = False) -> Path:
     out.parent.mkdir(parents=True, exist_ok=True)
+    vf = f"scale={width}:-2" + ("," + GRID_FILTER if grid else "")
     run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-ss", f"{max(t, 0):.3f}", "-i", str(path),
-         "-frames:v", "1", "-vf", f"scale={width}:-2", "-q:v", "4", str(out)])
+         "-frames:v", "1", "-vf", vf, "-q:v", "4", str(out)])
     if not out.exists():
         raise MediaError(f"Không trích được khung hình tại {t:.2f}s (có thể vượt quá độ dài video)")
     return out

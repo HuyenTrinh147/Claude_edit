@@ -109,6 +109,27 @@ def _load_plan(settings, target_ref: str):
     return plan, base_dir, renders
 
 
+def cmd_frame(args, settings) -> None:
+    """Grab one frame (optionally with a coordinate grid) from a project's source or render, or any video."""
+    from .media import extract_frame
+    from .project import Project
+
+    target = Path(args.target).expanduser()
+    if target.is_file():
+        video, out_dir = target, settings.root / "inbox" / "frames"
+    else:
+        project = Project.open(settings, args.target)
+        video = project.input_path if args.source == "source" else project.renders_dir / (
+            "preview.mp4" if args.source == "preview" else "final.mp4")
+        out_dir = project.analysis_dir / "frames"
+    if not video.exists():
+        raise SystemExit(f"Không có {video} — render trước đã")
+    for t in args.times:
+        out = Path(args.out) if args.out and len(args.times) == 1 else \
+            out_dir / f"{args.source}_{t:07.2f}{'_grid' if args.grid else ''}.jpg"
+        print(extract_frame(video, t, out, width=args.width, grid=args.grid))
+
+
 def cmd_validate(args, settings) -> None:
     """Validate edit_plan.json and, for a project, script/script.json (regenerating script.md from it)."""
     from pydantic import ValidationError
@@ -291,6 +312,15 @@ def build_parser() -> argparse.ArgumentParser:
     rd.add_argument("--preview", action="store_true", help="Nửa độ phân giải, nhanh")
     rd.add_argument("--out", help="File xuất (mặc định renders/<export.filename>)")
     rd.set_defaults(func=cmd_render)
+
+    fr = sub.add_parser("frame", help="Trích khung hình (có lưới toạ độ 0-1 để đặt chữ/đồ hoạ chính xác)")
+    fr.add_argument("target", help="Tên dự án hoặc file video")
+    fr.add_argument("times", nargs="+", type=float, help="Mốc giây (nguồn với --source source, timeline với preview/final)")
+    fr.add_argument("--source", choices=["source", "preview", "final"], default="source")
+    fr.add_argument("--grid", action="store_true", help="Vẽ lưới 10%% kèm nhãn toạ độ")
+    fr.add_argument("--width", type=int, default=540)
+    fr.add_argument("--out")
+    fr.set_defaults(func=cmd_frame)
 
     v = sub.add_parser("validate", help="Kiểm tra EditPlan (schema + đối chiếu file media)")
     v.add_argument("target", help="Tên dự án hoặc file edit_plan.json")
