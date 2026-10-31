@@ -10,6 +10,7 @@ sources:
   - https://raw.githubusercontent.com/google/fonts/main/ofl/anton/METADATA.pb
   - https://raw.githubusercontent.com/google/fonts/main/ofl/barlowcondensed/METADATA.pb
   - https://raw.githubusercontent.com/google/fonts/main/ofl/phudu/METADATA.pb
+  - https://raw.githubusercontent.com/google/fonts/main/ofl/phudu/DESCRIPTION.en_us.html
   - https://raw.githubusercontent.com/google/fonts/main/ofl/bangers/METADATA.pb
   - https://raw.githubusercontent.com/google/fonts/main/ofl/bungee/METADATA.pb
   - https://raw.githubusercontent.com/google/fonts/main/ofl/paytoneone/METADATA.pb
@@ -44,7 +45,7 @@ usWinDescent, tính theo em) — quyết định độ cao nền `pill` và kho�
 | `TikTok Sans` | Bold / Medium; `TikTok Sans Black` | Font gốc của TikTok, hơi hẹp | phụ đề, vlog, giáo dục, tin | 1.00 | 1.36 | trông "native" nhất |
 | `Anton` | Regular → `bold: false` | Condensed cực đậm kiểu Impact | hook, giá, meme, động lực | **0.80** | 1.73 | chiều cao x 0.73 em (Be Vietnam Pro 0.53) — trông to hơn ~40% |
 | `Barlow Condensed` | ExtraBold / SemiBold | Condensed dễ đọc | tin tức, số liệu, list, thể thao | 1.10 | 1.35 | 2 dòng chữ HOA gần chạm dấu |
-| `Phudu` | Black | Condensed toàn chữ HOA (nhà thiết kế Việt) | tít báo, thể thao, quote | 1.00 | 1.24 | gõ chữ thường vẫn ra HOA |
+| `Phudu` | Black | Condensed toàn chữ HOA của Dương Trần, gợi biển hiệu kẻ tay Việt Nam xưa | tít báo, thể thao, quán xá, quote | 1.00 | 1.24 | gõ chữ thường vẫn ra HOA |
 | `Bangers` | Regular → `bold: false` | Truyện tranh, nghiêng, toàn HOA | hài, reaction, gaming | 1.00 | 1.76 | thay thế Komika Axis (kiểu MrBeast) |
 | `Bungee` | Regular → `bold: false` | Khối vuông biển hiệu, toàn HOA, rất rộng | gaming, đường phố, sự kiện | 1.00 | **2.57** | `pill` cao quá mức → dùng viền, không dùng shape |
 | `Paytone One` | Regular → `bold: false` | Sans tròn đậm, thân thiện | đồ ăn, khuyến mãi, trẻ em | 1.05 | 1.63 | |

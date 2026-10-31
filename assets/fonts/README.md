@@ -2,6 +2,7 @@ Font dùng cho chữ, phụ đề & đồ hoạ của vedit. Mọi font dưới 
 `fc-query` có `vi`, và render thật bằng `vedit render` (dấu chồng Ẫ Ỗ Ữ Ợ Ệ đúng, log libass `fontselect` chọn
 đúng file, không rơi về Inter). Giấy phép: **SIL Open Font License 1.1** — file `OFL-<Tên>.txt` đi kèm từng họ.
 Hướng dẫn chọn font theo thể loại: `vedit kb show typography/thu-vien-font-cua-vedit`.
+Ảnh mẫu toàn bộ thư viện (render bằng vedit): `assets/fonts/bang-mau-font.png`.
 
 | `font` trong EditPlan | File | `bold: true` → / `bold: false` → | Phong cách | Giấy phép |
 |---|---|---|---|---|
@@ -10,7 +11,7 @@ Hướng dẫn chọn font theo thể loại: `vedit kb show typography/thu-vien
 | `TikTok Sans` | TikTokSans-Medium.ttf, TikTokSans-Bold.ttf, TikTokSans-Black.ttf ¹ ² | Bold 700 / Medium 500 (Black 900: `TikTok Sans Black`) | Font gốc của TikTok — phụ đề, chữ "native" | OFL-TikTokSans.txt |
 | `Anton` | Anton-Regular.ttf | Regular (rất đậm sẵn) — dùng `bold: false` | Condensed kiểu Impact — caption viral, meme, giá | OFL-Anton.txt |
 | `Barlow Condensed` | BarlowCondensed-SemiBold.ttf, BarlowCondensed-ExtraBold.ttf | ExtraBold 800 / SemiBold 600 | Condensed dễ đọc — tin tức, số liệu, nhãn | OFL-BarlowCondensed.txt |
-| `Phudu` | Phudu-Black.ttf ¹ | Black 900 (mọi trường hợp) | Condensed toàn chữ HOA, của nhà thiết kế Việt (Dương Trần) — tít báo, thể thao | OFL-Phudu.txt |
+| `Phudu` | Phudu-Black.ttf ¹ | Black 900 (mọi trường hợp) | Condensed toàn chữ HOA của Dương Trần, gợi biển hiệu kẻ tay Việt Nam xưa — tít báo, thể thao, quán xá | OFL-Phudu.txt |
 | `Bangers` | Bangers-Regular.ttf | Regular — dùng `bold: false` | Truyện tranh, toàn chữ HOA, nghiêng — hài, giải trí | OFL-Bangers.txt |
 | `Bungee` | Bungee-Regular.ttf | Regular — dùng `bold: false` | Biển hiệu đường phố khối vuông, chữ HOA — gaming, đường phố | OFL-Bungee.txt |
 | `Paytone One` | PaytoneOne-Regular.ttf | Regular — dùng `bold: false` | Sans tròn đậm, thân thiện — đồ ăn, khuyến mãi | OFL-PaytoneOne.txt |
