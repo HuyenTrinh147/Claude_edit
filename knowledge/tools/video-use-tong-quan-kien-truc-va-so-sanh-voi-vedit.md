@@ -50,7 +50,7 @@ sources:
 | `helpers/pack_transcripts.py` | JSON → `takes_packed.md`: các cụm câu, ngắt khi lặng ≥ 0.5 s hoặc đổi người nói |
 | `helpers/timeline_view.py` | Ảnh PNG gồm filmstrip N khung, waveform RMS, nhãn từ, tô vùng lặng ≥ 400 ms |
 | `helpers/render.py` | EDL → trích từng đoạn (grade, fade 30 ms, tone-map HDR) → concat `-c copy` → overlay dời PTS → phụ đề sau cùng → loudnorm 2 lượt |
-| `helpers/grade.py` | Preset màu, cộng auto-grade theo `signalstats` (mọi chỉnh sửa giới hạn ±8%) |
+| `helpers/grade.py` | Preset màu, cộng auto-grade theo `signalstats`. Docstring ghi "±8%", nhưng thực tế gamma được kẹp tới 1.10 |
 | `skills/manim-video/` | Skill con cho animation Manim (vendored từ NousResearch/hermes-agent) |
 | `tests/` | 3 file unittest: chia cụm phụ đề, fps, nhận dạng video dọc khi có xoay |
 | `poster.html`, `static/` | Hình minh hoạ cho README |
@@ -145,6 +145,7 @@ Quy trình 8 bước trong SKILL.md:
    - SKILL.md ghi `MarginV=35`, code dùng `MarginV=90`.
    - SKILL.md nói `--preview` ra 720p, nhưng trong code preview là 1080p CRF 22; chỉ `--draft` mới ra 720p.
    - `timeline_view` chú thích lọc từ "≥ 120ms" nhưng code lọc ở 50 ms.
+   - `grade.py` ghi "±8%" nhưng code cho gamma tới 1.10.
    - Chế độ `--edl` chưa làm.
    - Poster vẽ "speaker track" và vạch "CUT", nhưng tool thật không vẽ hai thứ đó.
 7. Không có schema kiểm tra EDL.
@@ -189,7 +190,7 @@ Quy trình 8 bước trong SKILL.md:
 **Còn thiếu (bằng chứng cụ thể):**
 - Không có bước duyệt chiến lược trước khi dựng.
 - Prompt bắt buộc một bộ hiệu ứng cố định. Plan gần nhất (`20261030-video-01`, dài 15.8 s) có 13 đồ hoạ và
-  10 SFX, trong đó 6 tiếng `pop` đi kèm badge.
+  10 SFX. Trong 10 SFX có 6 tiếng `pop` giống hệt nhau, 5 cái đi kèm 5 badge.
 - Không fade âm ở chỗ cắt thẳng.
 - Không đo loudness sau render: bản final gần nhất đo được **-27.5 LUFS**, TP -2.2 dBFS (ebur128, ngày 2026-10-31).
 - QA không kiểm tra điểm cắt.

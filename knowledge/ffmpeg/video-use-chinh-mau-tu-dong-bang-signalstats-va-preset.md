@@ -36,8 +36,9 @@ Muốn look khác (chân dung, thiên nhiên, sản phẩm, MV...) thì "invent 
 `grade.py --filter '<raw ffmpeg>'`, hoặc ghi chuỗi filter vào trường `grade` của EDL.
 
 ## Auto-grade theo từng đoạn (`"grade": "auto"`)
-Mục tiêu: "make it look clean without looking graded". Không LUT, không teal/orange, không curve kiểu phim. Mọi
-điều chỉnh bị chặn trong khoảng ±8%.
+Mục tiêu: "make it look clean without looking graded". Không LUT, không teal/orange, không curve kiểu phim.
+Docstring nói mọi điều chỉnh bị chặn trong ±8%, nhưng code thực tế cho gamma lên tới 1.10 (+10%), xem bước kẹp
+biên bên dưới.
 
 **1. Lấy mẫu khoảng 10 khung trong đoạn.** Tốc độ lấy mẫu `fps = clamp(10 / thời lượng, 0.5, 10)`:
 ```bash

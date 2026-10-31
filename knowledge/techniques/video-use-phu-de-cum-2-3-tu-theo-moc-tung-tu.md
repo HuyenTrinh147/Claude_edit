@@ -18,7 +18,7 @@ Phụ đề có 3 chiều cần cân nhắc:
 "The right combo depends on content." video-use tự sinh phụ đề từ transcript cấp từ cộng với EDL
 (`render.py --build-subtitles` → `edit/master.srt`).
 
-## Thuật toán chia cụm `chunk_words` (nguyên văn, MIT © 2026 Browser Use)
+## Thuật toán chia cụm `chunk_words` (logic và hằng số giữ nguyên, chỉ gộp dòng; MIT © 2026 Browser Use)
 ```python
 CHUNK_WORDS = 2         # target words per cue
 CHUNK_MAX_WORDS = 3     # a too-short chunk may grow to this many words

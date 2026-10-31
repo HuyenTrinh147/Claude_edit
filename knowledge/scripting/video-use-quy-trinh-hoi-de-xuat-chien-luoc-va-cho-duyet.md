@@ -57,8 +57,9 @@ is. Look first, ask second, edit last."
 **Outstanding:** deferred items
 ```
 - Khi khởi động: "read `project.md` if it exists and summarize the last session in one sentence before asking
-  whether to continue". Banner của repo cho thấy đúng hành vi này: agent nhớ kế hoạch cũ ("45s launch... 13
-  takes"), thấy chưa có thư mục `edit/` nên hỏi lại trước khi chạy.
+  whether to continue". Banner của repo cho thấy tinh thần này: agent nhớ kế hoạch cũ ("45s launch... 13
+  takes") qua bộ nhớ của Claude Code, thấy chưa có thư mục `edit/` nên kiểm tra lại trước khi chạy. Task list
+  trên banner cũng cho thấy agent dừng ở bước "Converse + propose strategy, wait for confirmation".
 
 ## Mẫu đề xuất chiến lược cho vedit (ví dụ minh hoạ, tiếng Việt)
 Ví dụ dưới đây dựa trên footage "muối hũ cà pháo" của dự án `20261030-video-01`. Đây là minh hoạ cách trình bày,

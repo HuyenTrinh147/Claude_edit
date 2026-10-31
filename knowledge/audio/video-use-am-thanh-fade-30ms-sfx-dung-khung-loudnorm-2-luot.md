@@ -100,7 +100,8 @@ quy tắc trong hệ thống.
 - Không fade ở chỗ cắt thẳng.
 - Không đo lại sau render, kể cả theo đoạn.
 - Không có loudnorm 2 lượt hay limiter.
-- Không giới hạn số SFX. Plan gần nhất có 10 SFX trong 15.8 s, gồm 6 `pop` giống hệt nhau cho mỗi badge.
+- Không giới hạn số SFX. Plan gần nhất có 10 SFX trong 15.8 s, gồm 6 `pop` giống hệt nhau; 5 trong số đó đi kèm
+  5 badge.
 - Không tự cân mức giữa các clip. Agent phải chỉnh tay `volume` khi nền nhảy +6.5–6.6 dB giữa hai clip kề nhau.
 - Chưa biết mức duck thực tế tính bằng dB.
 
