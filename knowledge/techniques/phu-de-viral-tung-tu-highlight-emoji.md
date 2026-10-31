@@ -94,6 +94,7 @@ img.save("fire.png")
   5. Emoji màu qua PNG (Pillow) + animation pop; tự chèn emoji theo từ khoá (tuỳ chọn).
 - Video không lời (ASMR cà pháo) không cần phụ đề; chữ ở đó là kinetic typography — xem
   `techniques/kinetic-typography-callout-lower-third-va-sticker`.
+- Xem thêm: `techniques/video-use-phu-de-cum-2-3-tu-theo-moc-tung-tu`, `techniques/claude-video-editor-phu-de-dong-theo-nang-luong-va-nhan-tu`, `typography/cap-font-he-thong-chu-theo-the-loai-video`.
 
 _Ghi chú nguồn: trang ngoài GitHub đọc qua trích đoạn tìm kiếm; thông số preset đọc trực tiếp trong mã pycaps;
 thử nghiệm emoji do Agent 1 chạy._

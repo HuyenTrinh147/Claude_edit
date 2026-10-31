@@ -103,6 +103,7 @@ cắt (khớp hình, khớp tiếng, tương phản), và cho **âm thanh lệch
 | Cắt theo beat/onset | **Chưa có dò onset/beat**; Agent 3 đo tay | Đề xuất `vedit analyze` xuất danh sách onset + beat |
 | Micro-fade | **Chưa** (concat thẳng) | Thêm `afade` 10–30 ms vào chuỗi âm thanh mỗi clip trong `render.py` |
 | Smash cut | Có (cắt cứng + volume/mute từng clip) | Kết hợp `mute`/volume để tạo tương phản tiếng |
+- Xem thêm: `techniques/video-use-quy-tac-cat-theo-ranh-gioi-tu-va-khoang-lang`, `audio/video-use-am-thanh-fade-30ms-sfx-dung-khung-loudnorm-2-luot`.
 
 _Ghi chú nguồn: trang ngoài GitHub được đọc qua trích đoạn của công cụ tìm kiếm (môi trường chặn truy cập trực
 tiếp); số đo trên bản dựng cà pháo do Agent 1 tự đo bằng ffmpeg + numpy._

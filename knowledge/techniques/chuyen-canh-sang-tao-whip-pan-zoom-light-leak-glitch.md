@@ -71,6 +71,8 @@ gradients=s=1080x1920:r=30:d=3:type=radial:c0=0xFF7A1A:c1=0xFFD27F:c2=0x000000:n
 fade=t=in:st=1.1:d=0.25:color=black,fade=t=out:st=1.45:d=0.45:color=black[leak];
 [base]format=gbrp[b];[b][leak]blend=all_mode=screen:shortest=1,format=yuv420p[v]
 ```
+- Nhanh hơn mà nhìn như nhau (đã so khung hình): sinh leak ở 270x480, `gblur=sigma=30`, rồi `scale=1080:1920` trước
+  `fade` — 3 s ở 1080p giảm từ 5,7 s xuống 4,0 s render.
 - Hợp với: vlog ấm, đồ ăn, hoài niệm. Không hợp: tech sạch.
 
 ## 4. Glitch / RGB split
@@ -103,6 +105,7 @@ geq=lum='lum(X+if(lt(mod(floor(Y/24)+N,5),1),18,0),Y)':cb='cb(X,Y)':cr='cr(X,Y)'
   liên tiếp cùng kiểu hoặc >5 cắt cứng liên tiếp ở video năng lượng cao.
 - Agent 2 hiện tại có thể: dùng `smoothleft`/`slideup` 0,2–0,3 s + `sfx:whoosh` + `motion: punch` ngay sau cắt
   để giả whip/zoom; `fadewhite` 0,15 s + `sfx:sparkle` giả light leak sáng.
+- Xem thêm: `techniques/claude-video-editor-chon-chuyen-canh-theo-y-nghia`, `techniques/claude-video-editor-luat-chuyen-dong-va-ngon-ngu-hinh-anh`.
 
 _Ghi chú nguồn: trang ngoài GitHub đọc qua trích đoạn tìm kiếm; README xfade-easing/gl-transitions và tài liệu
 filter FFmpeg đọc trực tiếp; công thức do Agent 1 chạy thử._

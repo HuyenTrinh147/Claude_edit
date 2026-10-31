@@ -92,6 +92,7 @@ qua `selectivecolor`/vibrance vào đỏ–vàng, giữ vùng trắng trung tín
   `food_natural` (vibrance + selectivecolor + S-curve, không đẩy nhiệt độ toàn cục); (4) bộ LUT miễn phí trong
   `assets/luts/` có giấy phép rõ.
 - Agent 3 nên đo signalstats các clip trước khi chọn look, ghi vào `notes` clip nào lệch sáng >10 mức Y.
+- Xem thêm: `ffmpeg/claude-video-editor-grade-mau-tu-dong-va-tonemap-hdr`.
 
 _Ghi chú nguồn: trang ngoài GitHub đọc qua trích đoạn tìm kiếm; tham số filter đọc trực tiếp từ tài liệu FFmpeg 6.1
 trên GitHub; số đo do Agent 1 chạy._

@@ -52,7 +52,9 @@ setpts='( if(lt(T,a), T,
          if(lt(T,d), a+Ic+F*(T-c)-k2/2*(T-c)^2,
                      a+Id+(T-d))))) )/TB', framerate=fps=30
 ```
-Ví dụ đã chạy: a=0.4, b=0.8, c=1.4, d=1.8, F=4 trên đoạn cà rơi 12.95–15.15 s → 2,2 s nguồn thành 5,23 s.
+(Thay số trước khi chạy; viết biểu thức trên một dòng. T là giây tính từ đầu clip đã `-ss`/`trim`.) Bản số đã chạy:
+`setpts='(if(lt(T,0.4),T,if(lt(T,0.8),0.4+(T-0.4)+3.75*(T-0.4)*(T-0.4),if(lt(T,1.4),1.4+4*(T-0.8),if(lt(T,1.8),3.8+(T-1.4)*4-3.75*(T-1.4)*(T-1.4),4.8+(T-1.8))))))/TB'`
+— a=0.4, b=0.8, c=1.4, d=1.8, F=4 trên đoạn cà rơi 12.95–15.15 s → 2,2 s nguồn thành 5,23 s.
 - Sau `setpts` phải chuẩn lại fps: `fps=30` (lặp frame, nhanh), `framerate=fps=30` (trộn frame, nhanh: 0,8 s),
   `minterpolate=fps=30:mi_mode=mci:mc_mode=aobmc:me_mode=bidir` (nội suy chuyển động, đẹp nhất nhưng **~20 lần
   chậm hơn**: 16 s cho 2,2 s ở 360p).
@@ -131,6 +133,7 @@ Lưới nhiều ô: `xstack`. PiP: `[1:v]scale=360:-2[p];[0:v][p]overlay=x=W-w-4
 
 Với video cà pháo: ramp "hero" ở khoảnh khắc gừng sợi rơi (9.16–10.56 s nguồn) hoặc quả cà chạm nước; freeze 0,8 s
 ở frame hũ thành phẩm đẹp nhất kèm "tách" + chữ viết tay.
+- Xem thêm: `techniques/claude-video-editor-bien-anh-tinh-thanh-canh-chuyen-dong`.
 
 _Ghi chú nguồn: trang ngoài GitHub đọc qua trích đoạn tìm kiếm; tài liệu filter đọc trực tiếp từ mirror GitHub
 FFmpeg 6.1; các lệnh được Agent 1 chạy thử._

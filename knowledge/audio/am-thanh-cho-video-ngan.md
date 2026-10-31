@@ -78,6 +78,7 @@ chỉ giảm nền ~1 dB trên đoạn này — giảm ồn mạnh sẽ làm h�
   (3) `Clip.audio_lead/audio_tail` (J/L-cut); (4) track `role: "ambience"` lặp nền phòng dưới toàn video;
   (5) `AudioTrack.duck_amount_db` để chỉnh độ ép (ASMR 4–6 dB, lời nói 15–20 dB).
 - Sound design nhiều lớp: xem `audio/sound-design-nhieu-lop-ambience-foley-whoosh-riser-impact`.
+- Xem thêm: `audio/video-use-am-thanh-fade-30ms-sfx-dung-khung-loudnorm-2-luot`, `audio/claude-video-editor-am-thanh-fade-30ms-va-loudnorm-2-luot`.
 
 _Ghi chú nguồn: trang ngoài GitHub đọc qua trích đoạn tìm kiếm; tài liệu loudnorm đọc trực tiếp (FFmpeg 6.1); số đo
 do Agent 1 chạy trên `projects/20261030-video-01/renders/final.mp4`._

@@ -89,6 +89,7 @@ Chữ động "có tay nghề" khác chữ động mặc định ở 3 điểm: 
 - Với video ASMR/vlog bếp: ưu tiên chữ nhỏ, viết thường, viết tay, ít; nhãn nguyên liệu dạng tag + mũi tên vẽ tay
   thay cho callout pill; bỏ huy hiệu bước to nếu phong cách là "silent vlog" (xem
   `trends/phong-cach-vlog-tham-my-silent-vlog-douyin-cinematic-pov`).
+- Xem thêm: `techniques/video-use-animation-overlay-easing-va-thoi-diem-payoff`, `typography/cap-font-he-thong-chu-theo-the-loai-video`.
 
 _Ghi chú nguồn: trang ngoài GitHub đọc qua trích đoạn tìm kiếm; README rembg/RVM và tài liệu repo đọc trực tiếp.
 Thẻ ASS đối chiếu với mã `vedit/ass.py` đang chạy._

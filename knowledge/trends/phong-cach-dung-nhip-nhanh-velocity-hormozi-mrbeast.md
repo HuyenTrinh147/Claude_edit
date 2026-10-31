@@ -66,7 +66,7 @@ thử thách). Với ASMR/nấu ăn chậm, chỉ mượn **một** chiêu (mộ
 | Phong cách | Làm được ngay | Còn thiếu |
 |---|---|---|
 | Velocity | `Clip.speed` hằng số từng đoạn + cắt ngắn + `motion` punch/shake + `graphics: flash` + SFX | speed ramp mượt, dò beat, motion blur |
-| Hormozi | `captions` karaoke + `uppercase` + font đậm (Montserrat Black/Anton có trong assets/fonts), `motion: punch` sau mỗi jump cut | chia cụm 1–3 từ, nhấn từ khoá, hộp nền từ, emoji màu |
+| Hormozi | `captions` karaoke + `uppercase` + font đậm (Montserrat Black/Anton — xem `typography/thu-vien-font-cua-vedit`), `motion: punch` sau mỗi jump cut | chia cụm 1–3 từ, nhấn từ khoá, hộp nền từ, emoji màu |
 | MrBeast | cắt 1,5–2,6 s, chữ 3–4 từ, SFX | — (đủ dùng, nhưng phong cách đang chậm lại) |
 
 Quy tắc chọn: nội dung chậm/đẹp (đồ ăn, vlog) → xem `trends/phong-cach-vlog-tham-my-silent-vlog-douyin-cinematic-pov`.
