@@ -24,7 +24,7 @@ if [ ! -x .venv/bin/python ]; then
 fi
 echo "• Cài vedit + thư viện..."
 .venv/bin/pip install -q --upgrade pip
-.venv/bin/pip install -q -e ".[gdrive,dev]"
+.venv/bin/pip install -q -e ".[gdrive,track,dev]"
 
 # Đưa lệnh `vedit` ra PATH chung để mọi shell (kể cả subagent) gọi được
 for dir in /usr/local/bin "$HOME/.local/bin"; do

@@ -26,7 +26,8 @@ Chấm theo thứ tự:
 2. **Luật cứng**: liệt kê từng vi phạm.
 3. **Sáng tạo & nhịp**: hook 0–2s có giữ người xem không; nhịp có biến thiên; khoảng 5s có một khoảnh khắc "wow" không;
    hiệu ứng nào thừa, đồng phục hay lạc phong cách.
-4. **Chữ**: đọc kịp, tương phản, cỡ, vùng an toàn, che chủ thể.
+4. **Chữ & HUD**: đọc kịp, tương phản, cỡ, vùng an toàn, che chủ thể; HUD game: mỗi đồ hoạ có gắn với một hành động +
+   một tiếng thật không, có bám đúng vật không, quá 3–4 mục cùng lúc gây rối không, chữ thưởng có đúng khung "ăn điểm".
 5. **Kỹ thuật**: khung thừa/chớp, cắt giữa động tác hoặc tiếng, lệch tiếng, crop mất chủ thể, âm thanh.
 
 Trả về (tiếng Việt):

@@ -8,6 +8,7 @@ _Tự động tạo bởi vedit — đừng sửa tay._
 - [Bộ công cụ đồ hoạ & hiệu ứng của vedit](techniques/bo-cong-cu-do-hoa-hieu-ung-cua-vedit.md) — _vedit, đồ hoạ, motion graphics, animation, callout, sfx, look, editplan_
 - [Chuyển cảnh sáng tạo: whip pan, zoom, light leak, glitch](techniques/chuyen-canh-sang-tao-whip-pan-zoom-light-leak-glitch.md) — _transition, chuyển cảnh, whip pan, zoom transition, light leak, glitch, flash, easing, xfade, motion blur_
 - [Dựng video nấu ăn, ASMR và satisfying](techniques/dung-video-nau-an-asmr-va-satisfying.md) — _nấu ăn, ẩm thực, asmr, satisfying, silent vlog, money shot, macro, time-lapse, onset, cà pháo_
+- [Giao diện game (HUD) bám vật thật — biến video thành màn chơi](techniques/giao-dien-game-hud-bam-vat-cho-video.md) — _vedit, hud, game, vr, ar, tracking, bám vật, reticle, combo, chiptune, freeze frame, editplan_
 - [Kinetic typography, callout, lower third và sticker](techniques/kinetic-typography-callout-lower-third-va-sticker.md) — _kinetic typography, chữ động, easing, libass, callout, mũi tên, lower third, sticker, meme, text behind subject, progress bar_
 - [Kỹ thuật cắt: jump cut, J/L-cut, match cut, cắt theo beat](techniques/ky-thuat-cat-jump-cut-j-l-cut-match-cut-cat-theo-beat.md) — _jump cut, j-cut, l-cut, match cut, smash cut, cut on action, cutaway, b-roll, beat, micro-fade_
 - [Màu sắc: grading theo thể loại và đồng bộ giữa các cảnh](techniques/mau-sac-grading-theo-the-loai-va-dong-bo-giua-cac-canh.md) — _màu, color grading, color correction, lut, tông da, shot matching, đồ ăn, vibrance, signalstats, ffmpeg_

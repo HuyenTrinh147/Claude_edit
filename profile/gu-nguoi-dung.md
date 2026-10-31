@@ -18,4 +18,6 @@ khen/chê (ghi nguyên văn + bài học rút ra). File được commit để nh
 
 ## Điều đã biết người dùng thích / không thích
 - Không thích: video "đồng phục", hiệu ứng rải đều không có ý tưởng.
-- Thích: (chưa rõ — hỏi qua bước chọn hướng dựng và ghi lại ở đây)
+- Thích (2026-10-31, dự án cà pháo): video **như đang chơi game nấu ăn thực tế ảo** — giao diện game kết hợp HUD công
+  nghệ (viền mảnh neon, khung ngắm) với chữ thưởng vui; chữ pha thuật ngữ game tiếng Anh (PERFECT!, LEVEL UP, COMBO ×3).
+- Sẵn sàng chờ để có bản chuẩn: chọn "làm đủ tính năng rồi dựng" thay vì bản nháp bằng cách tạm.

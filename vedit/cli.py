@@ -167,6 +167,37 @@ def cmd_sheet(args, settings) -> None:
     print(f"{path}\n  mốc: {', '.join(f'{t:.2f}' for t in times)}")
 
 
+def cmd_track(args, settings) -> None:
+    """Track an object in a project's source video so HUD graphics can follow it."""
+    from .project import Project
+    from .track import Track, describe, track_object, track_path, track_sheet
+
+    project = Project.open(settings, args.project)
+    tracks_dir = project.analysis_dir / "tracks"
+    if not args.name:
+        files = sorted(tracks_dir.glob("*.json")) if tracks_dir.is_dir() else []
+        print("\n".join(describe(Track.load(f)) for f in files) or "Chưa có track nào")
+        return
+    out = track_path(project.dir, args.name)
+    if args.at is None or args.box is None:
+        if not out.exists():
+            raise SystemExit("Cần --at và --box để tạo track mới")
+        track = Track.load(out)
+    else:
+        try:
+            box = tuple(float(v) for v in args.box.split(","))
+        except ValueError:
+            box = ()
+        if len(box) != 4:
+            raise SystemExit("--box phải là x,y,w,h (tỉ lệ 0..1), vd 0.30,0.30,0.45,0.40")
+        video = Path(args.source).expanduser() if args.source else project.input_path
+        track = track_object(video, name=args.name, at=args.at, box=box, until=args.until, back=args.back,
+                             smoothing=args.smooth)
+        track.save(out)
+    sheet = track_sheet(track, Path(track.source), tracks_dir / f"{args.name}_sheet.jpg")
+    print(f"✓ {describe(track)}\n  {out}\n  kiểm tra bằng mắt: {sheet}")
+
+
 def cmd_note(args, settings) -> None:
     from .project import Project
 
@@ -311,6 +342,8 @@ def cmd_doctor(args, settings) -> None:
     row(has_key, "ANTHROPIC_API_KEY", "đặt trong .env (bắt buộc cho 3 agent; 'vedit render' không cần)")
     row(importlib.util.find_spec("faster_whisper") is not None, "faster-whisper (phụ đề tự động)",
         "tuỳ chọn: pip install 'vedit[transcribe]'")
+    row(importlib.util.find_spec("cv2") is not None, "OpenCV (vedit track — HUD bám vật)",
+        "tuỳ chọn: pip install 'vedit[track]'")
     row(importlib.util.find_spec("googleapiclient") is not None, "google-api-python-client (Drive)",
         "tuỳ chọn: pip install 'vedit[gdrive]'")
     row(bool(settings.gdrive_oauth_client or settings.gdrive_service_account), "Cấu hình Google Drive",
@@ -422,6 +455,17 @@ def build_parser() -> argparse.ArgumentParser:
     sh.add_argument("--width", type=int, default=360)
     sh.add_argument("--out")
     sh.set_defaults(func=cmd_sheet)
+
+    tk = sub.add_parser("track", help="Bám theo một vật trong video nguồn để HUD / đồ hoạ dính vào vật (OpenCV)")
+    tk.add_argument("project")
+    tk.add_argument("name", nargs="?", help="Tên track, vd 'hu', 'ot' (bỏ trống = liệt kê track đã có)")
+    tk.add_argument("--at", type=float, help="Mốc giây NGUỒN nơi khoanh vật (xem `vedit frame <dự án> <giây> --grid`)")
+    tk.add_argument("--box", help="Hộp quanh vật tại --at: x,y,w,h theo tỉ lệ khung nguồn (góc trên-trái + rộng, cao)")
+    tk.add_argument("--until", type=float, help="Bám tới giây nguồn này (mặc định hết video)")
+    tk.add_argument("--back", type=float, help="Bám ngược về giây nguồn này")
+    tk.add_argument("--source", help="File video khác video của dự án")
+    tk.add_argument("--smooth", type=float, default=0.5, help="Làm mượt 0..1 (mặc định 0.5)")
+    tk.set_defaults(func=cmd_track)
 
     nt = sub.add_parser("note", help="Ghi quyết định / phản hồi vào nhật ký dự án (project.md)")
     nt.add_argument("project")

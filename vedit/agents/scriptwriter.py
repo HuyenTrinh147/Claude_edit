@@ -224,6 +224,8 @@ Kỹ thuật EditPlan:
 - Có transcript: captions với mốc đã quy đổi theo đoạn cắt. Âm thanh: file thật (list_assets) hoặc 'sfx:<tên>'.
 - Đo vị trí x/y cho chữ & đồ hoạ bằng view_frames(grid=true). Đặt export.thumbnail_at vào khung hình đẹp nhất.
 - Bảng công cụ (tra cứu, không bắt buộc): kb_read('techniques/bo-cong-cu-do-hoa-hieu-ung-cua-vedit').
+- Hướng "game" (HUD, AR/VR): kb_read('techniques/giao-dien-game-hud-bam-vat-cho-video'); đồ hoạ bám vật → gọi
+  track_object trước (xem ảnh kiểm tra nó trả về) rồi dùng hud[].anchor.track; Clip.freeze cho khoảnh khắc thẻ kết.
 
 Luật dựng — luật cứng phải tuân thủ, phần sáng tạo là nguyên tắc:
 {rules}

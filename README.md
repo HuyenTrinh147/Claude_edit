@@ -157,7 +157,13 @@ Một file JSON mô tả toàn bộ video. Ví dụ rút gọn (`vedit schema pl
   - `graphics`: `callout` (nhãn + đường chỉ vào vật), `badge` (số bước), `progress_bar`, `highlight`, `sparkles`, `flash`;
   - `motion`: `punch` (zoom giật) và `shake` (rung) khớp tiếng va chạm / beat;
   - `look`: tông màu `warm_food`, `bright_clean`, `film`, `moody`, `vivid`, `bw` + vignette, hạt film;
-  - âm thanh hiệu ứng tổng hợp không cần file: `sfx:pop|click|ding|sparkle|whoosh|thud|rise`.
+  - âm thanh hiệu ứng tổng hợp không cần file: `sfx:pop|click|ding|sparkle|whoosh|thud|rise` + âm 8-bit cho game
+    `pickup|coin|lock|combo|levelup|slash|zip|tick|complete|buzz`, đổi cao độ bằng `pitch`;
+  - `Clip.freeze`: dừng hình ở khung cuối clip.
+- **Giao diện game bám vật** (chi tiết: `knowledge/techniques/giao-dien-game-hud-bam-vat-cho-video.md`):
+  `vedit track <dự án> <tên> --at <giây> --box x,y,w,h` bám theo một vật (OpenCV, `pip install -e ".[track]"`), rồi
+  `hud` vẽ khung kính VR, khung ngắm khoá mục tiêu, bảng nhiệm vụ tick dần, thanh đo có vùng chuẩn, điểm số / đồng hồ
+  đếm lùi, chữ thưởng PERFECT!, túi đồ, thẻ ★★★, nút tay cầm VR — mục nào có `anchor` sẽ đi theo vật thật.
 - `vedit frame <dự án> <giây> --grid` trích khung hình có lưới toạ độ 0–1 để đặt đồ hoạ đúng vị trí vật.
 
 ## Google Drive

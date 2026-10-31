@@ -91,7 +91,8 @@ Quy trình gợi ý:
 
 Kỹ thuật: Clip.start/end là giây NGUỒN; texts/captions/graphics/motion/audio là giây TIMELINE — đổi độ dài/thứ tự clip
 thì dời các mốc đó. Đo vị trí bằng view_frames(grid=true) / inspect_render(grid=true). Bảng công cụ (tra cứu, không bắt
-buộc): kb_read('techniques/bo-cong-cu-do-hoa-hieu-ung-cua-vedit').
+buộc): kb_read('techniques/bo-cong-cu-do-hoa-hieu-ung-cua-vedit'); HUD game bám vật:
+kb_read('techniques/giao-dien-game-hud-bam-vat-cho-video') — track lệch thì gọi lại track_object với hộp sát hơn.
 
 Luật dựng — luật cứng phải tuân thủ, phần sáng tạo là nguyên tắc:
 {rules}

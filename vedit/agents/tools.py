@@ -211,7 +211,33 @@ def frame_tools(project: Project) -> list:
             blocks += [{"type": "text", "text": f"t={t:.2f}s"}, image_block(frame)]
         return blocks
 
-    return [view_frames]
+    @beta_tool
+    def track_object(name: str, at: float, box: list[float], until: float | None = None,
+                     back: float | None = None) -> list:
+        """Bám theo một vật trong video nguồn (OpenCV) để HUD / đồ hoạ dính vào vật thật (anchor.track = name).
+        Tự dừng ở điểm cắt cảnh. Trả về tóm tắt + ảnh kiểm tra có vẽ hộp bám — hãy xem ảnh trước khi dùng track.
+
+        Args:
+            name: Tên track ngắn, không dấu, vd 'hu', 'ot', 'tay'.
+            at: Mốc giây NGUỒN nơi khoanh vật (đo bằng view_frames với grid=true).
+            box: [x, y, w, h] theo tỉ lệ khung nguồn 0..1 (góc trên-trái + rộng, cao) bao sát vật tại `at`.
+            until: Bám tới giây nguồn này (mặc định hết video).
+            back: Bám ngược về giây nguồn này.
+        """
+        from ..track import TrackError, describe, track_path, track_sheet
+        from ..track import track_object as run_track
+
+        if len(box) != 4:
+            raise ToolError("box phải có 4 số [x, y, w, h] trong 0..1")
+        try:
+            track = run_track(project.input_path, name=name, at=at, box=tuple(box), until=until, back=back)
+        except TrackError as e:
+            raise ToolError(str(e)) from None
+        track.save(track_path(project.dir, name))
+        sheet = track_sheet(track, project.input_path, project.analysis_dir / "tracks" / f"{name}_sheet.jpg")
+        return [{"type": "text", "text": describe(track)}, image_block(sheet)]
+
+    return [view_frames, track_object]
 
 
 # ---- edit plan ------------------------------------------------------------------------------

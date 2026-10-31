@@ -569,6 +569,17 @@ def check_fonts(plan: EditPlan, font: str, fonts_dir: Path | None = None) -> lis
                  for i, s in enumerate(plan.captions.segments)]
     uses += [(f"graphic #{i}", g.font or font, True, g.text + g.label)
              for i, g in enumerate(plan.graphics) if g.text or g.label]
+    if plan.hud:
+        from .hud import HUD_FONT, REWARD_FONT, hud_texts
+
+        hud_font = HUD_FONT if fonts.resolves(HUD_FONT) else font
+        for i, item in enumerate(plan.hud):
+            text = "".join(hud_texts(item))
+            if not text:
+                continue
+            uses.append((f"hud #{i} ({item.type})", item.font or hud_font, True, text))
+            if item.type in ("popup", "card") and not item.font and fonts.resolves(REWARD_FONT):
+                uses.append((f"hud #{i} ({item.type})", REWARD_FONT, True, text))
     problems, unknown = [], set()
     for where, family, bold, text in uses:
         if family in unknown:
@@ -585,7 +596,10 @@ def check_fonts(plan: EditPlan, font: str, fonts_dir: Path | None = None) -> lis
     return problems
 
 
-def build_ass(plan: EditPlan, font: str, fonts_dir: Path | None = None) -> str:
+def build_ass(plan: EditPlan, font: str, fonts_dir: Path | None = None, *, fps: int | None = None,
+              base_dir: Path | None = None, probe=None) -> str:
+    """The overlay script. HUD items are evaluated per frame at `fps` (the render's frame rate); anchored ones
+    need `base_dir` (where analysis/tracks/ lives) and `probe` (source video sizes)."""
     W, H = plan.canvas.width, plan.canvas.height
     fonts = FontBook(fonts_dir)
     styles = [style_line("G", font=font, size=60, primary=ass_color("#FFFFFF"), secondary=ass_color("#FFFFFF"),
@@ -600,6 +614,12 @@ def build_ass(plan: EditPlan, font: str, fonts_dir: Path | None = None) -> str:
         styles += cap_styles
         events += cap_evs
     events += graphic_events(plan.graphics, W, H, font, fonts)
+    if plan.hud:
+        from .hud import hud_events
+        from .world import World
+
+        world = World(plan, base_dir, fps or plan.canvas.fps, probe)
+        events += hud_events(plan, world, fonts, font)
     return "\n".join([
         "[Script Info]", "ScriptType: v4.00+", f"PlayResX: {W}", f"PlayResY: {H}", "WrapStyle: 2",
         "ScaledBorderAndShadow: yes", "YCbCr Matrix: TV.709", "",

@@ -38,10 +38,14 @@ Trả về tóm tắt mỗi hướng trong 2–3 dòng.
    `vedit schema plan` — **trung thành với hướng đã duyệt**: dùng đúng các chiêu chữ ký của nó, không rải thêm công cụ
    khác. Bảng công cụ để tra cứu: `vedit kb show techniques/bo-cong-cu-do-hoa-hieu-ung-cua-vedit`.
 2. Kỹ thuật EditPlan: `sources: {"main": "<đường dẫn tuyệt đối video>"}`; clip `start/end` = giây NGUỒN;
-   texts/captions/graphics/motion/audio = giây TIMELINE (mỗi clip chiếm (end-start)/speed giây; transition làm 2 clip
-   chồng lấn). Canvas theo nền tảng (TikTok/Reels/Shorts 1080x1920). Âm thanh: file thật trong `assets/` hoặc SFX tổng
-   hợp `sfx:pop|click|ding|sparkle|whoosh|thud|rise`. Có transcript → captions với mốc đã quy đổi theo đoạn cắt.
+   texts/captions/graphics/hud/motion/audio = giây TIMELINE (mỗi clip chiếm (end-start)/speed + freeze giây; transition
+   làm 2 clip chồng lấn). Canvas theo nền tảng (TikTok/Reels/Shorts 1080x1920). Âm thanh: file thật trong `assets/` hoặc
+   SFX tổng hợp `sfx:<tên>` (`pop click ding sparkle whoosh thud rise` + 8-bit `pickup coin lock combo levelup slash
+   zip tick complete buzz`, có `pitch` nửa cung). Có transcript → captions với mốc đã quy đổi theo đoạn cắt.
    Đo vị trí chữ/đồ hoạ bằng `vedit frame <slug> <giây> --grid`.
+   **Hướng "game" (HUD, AR/VR)**: đọc `vedit kb show techniques/giao-dien-game-hud-bam-vat-cho-video`. Đồ hoạ bám vật
+   cần track trước: `vedit track <slug> <tên> --at <giây nguồn> --box x,y,w,h [--until ..] [--back ..]`, Read ảnh
+   `analysis/tracks/<tên>_sheet.jpg` để chắc khung bám đúng vật, rồi dùng `"anchor": {"track": "<tên>", ...}`.
 3. `vedit validate <slug>` tới khi hợp lệ (kiểm tra media, font và ký tự; tạo `script/script.md`).
 4. `vedit note <slug> "<quyết định chính>" --kind "Agent 2"`.
 

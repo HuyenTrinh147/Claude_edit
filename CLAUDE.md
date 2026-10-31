@@ -8,7 +8,7 @@ viết tiếng Việt, mã nguồn & comment tiếng Anh.
 Trong Claude Code, bạn là người điều phối: 4 agent chạy dưới dạng subagent (`.claude/agents/`) nên không cần
 ANTHROPIC_API_KEY — `video-researcher` (Agent 1), `video-scriptwriter` (Agent 2), `video-editor` (Agent 3),
 `video-critic` (phản biện). Subagent không gọi được subagent khác: bạn chạy từng bước. Việc không cần AI
-(`vedit fetch / analyze / sheet / frame / validate / render / note / kb / projects`) chạy bằng CLI.
+(`vedit fetch / analyze / sheet / frame / track / validate / render / note / kb / projects`) chạy bằng CLI.
 
 - Đầu phiên, nếu `command -v vedit` không thấy lệnh: `bash scripts/setup.sh` (tạo .venv, cài, đưa `vedit` ra PATH).
 - Lệnh tắt (`.claude/skills/`): `/lam-video` (trọn quy trình), `/kich-ban` (Agent 2), `/sua-video` (Agent 3),
@@ -32,10 +32,16 @@ ANTHROPIC_API_KEY — `video-researcher` (Agent 1), `video-scriptwriter` (Agent 
 - `vedit/edl.py` — schema `EditPlan` (pydantic), hợp đồng giữa Agent 2 và Agent 3. Clip start/end = giây nguồn;
   texts/captions/audio = giây timeline.
 - `vedit/render.py` — EditPlan → một filter graph ffmpeg (timeline theo khung hình nguyên, concat/xfade, fit
-  cover/contain/blur, look màu, punch/shake bằng zoompan, SFX tổng hợp bằng aevalsrc, amix + sidechaincompress + loudnorm).
+  cover/contain/blur, freeze bằng tpad, look màu, zoom/punch/shake bằng `perspective` (mượt dưới pixel), SFX tổng hợp
+  bằng aevalsrc (+ 8-bit, pitch bằng asetrate), amix + sidechaincompress + loudnorm).
 - `vedit/ass.py` — lớp libass: chữ động + nền sticker, phụ đề, đồ hoạ vector (callout, badge, progress bar, highlight,
   sparkles, flash); `FontBook` chuẩn hoá cỡ chữ theo metric win của font và đổi tên family sang tên libass nhận.
 - `vedit/media.py` — ffprobe, dò cảnh/khoảng lặng, trích khung hình, faster-whisper (tuỳ chọn).
+- `vedit/track.py` — bám vật bằng OpenCV CSRT (extra `track`), tự dừng ở điểm cắt cảnh → `analysis/tracks/<tên>.json`.
+- `vedit/world.py` — quy đổi toạ độ nguồn (track) → pixel khung ở từng frame, theo đúng hình học của render (layout
+  theo frame, fit, Ken Burns, punch/shake — hằng số envelope dùng chung với `render.motion_filter`).
+- `vedit/hud.py` — HUD game (visor, reticle, panel, meter, counter, popup, slots, card, prompt, icon): tính từng frame
+  bằng Python rồi ghi event ASS tĩnh, gộp các frame giống nhau; mép event nằm giữa hai frame.
 - `vedit/agents/` — phiên bản chạy bằng Claude API (cần key): `base.py` (tool runner streaming, web_search/web_fetch,
   caching, fallbacks), `tools.py`, `researcher.py`, `scriptwriter.py` (`run_concepts` → cổng duyệt `pipeline.choose_concept`
   → `run_scriptwriter`), `editor.py`.

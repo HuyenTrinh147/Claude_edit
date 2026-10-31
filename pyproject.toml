@@ -26,6 +26,8 @@ gdrive = [
 ]
 # Chuyển giọng nói thành chữ (phụ đề tự động, cắt khoảng lặng theo lời thoại)
 transcribe = ["faster-whisper>=1.0"]
+# Bám vật (object tracking) để HUD / đồ hoạ dính vào vật thật: `vedit track`
+track = ["opencv-contrib-python-headless>=4.9"]
 dev = ["pytest>=8"]
 
 [project.scripts]

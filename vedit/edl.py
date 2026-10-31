@@ -15,7 +15,7 @@ import json
 import re
 import unicodedata
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -45,7 +45,9 @@ TextAnimation = Literal[
     "none", "fade", "pop", "bounce", "slide_up", "slide_left", "typewriter", "word_pop", "blur_in", "wipe",
 ]
 LOOK_PRESETS = ("none", "warm_food", "bright_clean", "film", "moody", "vivid", "bw")
-BUILTIN_SFX = ("pop", "click", "ding", "sparkle", "whoosh", "thud", "rise")
+BUILTIN_SFX = ("pop", "click", "ding", "sparkle", "whoosh", "thud", "rise",
+               # chiptune game sounds (square / triangle waves)
+               "pickup", "lock", "combo", "levelup", "slash", "zip", "coin", "tick", "complete", "buzz")
 
 
 class _Model(BaseModel):
@@ -94,6 +96,8 @@ class Clip(_Model):
     volume: float = Field(1.0, ge=0, le=4)
     mute: bool = False
     transition: Transition | None = Field(None, description="Chuyển cảnh TỪ clip trước VÀO clip này")
+    freeze: float = Field(0, ge=0, le=10, description="Dừng hình ở khung cuối thêm N giây (freeze frame cho "
+                                                      "khoảnh khắc thưởng / thẻ hoàn thành); tiếng gốc im lặng")
     note: str = Field("", description="Vai trò của clip trong kịch bản (hook, b-roll, CTA...)")
 
     @model_validator(mode="after")
@@ -116,7 +120,7 @@ class Clip(_Model):
 
     @property
     def timeline_duration(self) -> float:
-        return self.source_duration / self.speed
+        return self.source_duration / self.speed + self.freeze
 
 
 class TextOverlay(_Model):
@@ -253,6 +257,8 @@ class AudioTrack(_Model):
     fade_out: float = Field(1.0, ge=0, le=10)
     loop: bool = Field(True, description="Lặp lại nếu file ngắn hơn video")
     duck: bool = Field(True, description="Tự giảm âm lượng nhạc khi có giọng nói (chỉ áp dụng role=music)")
+    pitch: float = Field(0, ge=-24, le=24, description="Đổi cao độ theo nửa cung (vd chuỗi combo 0, 2, 4, 7 cao dần); "
+                                                       "đổi cả độ dài như tua băng")
 
     @property
     def builtin(self) -> str | None:
@@ -263,6 +269,207 @@ class AudioTrack(_Model):
         if self.builtin is not None and self.builtin not in BUILTIN_SFX:
             raise ValueError(f"âm thanh tổng hợp '{self.path}' không có; chọn: {', '.join(BUILTIN_SFX)}")
         return self
+
+
+# ---- game HUD ----------------------------------------------------------------------------------------
+
+HudPoint = Literal["center", "top", "bottom", "left", "right", "top_left", "top_right", "bottom_left", "bottom_right"]
+HudEase = Literal["pop", "slide", "stamp", "fade", "none"]
+HudIcon = Literal["star", "check", "lock", "coin", "heart", "hand", "clock", "drop", "bolt", "flame"]
+HUD_ICONS = ("star", "check", "lock", "coin", "heart", "hand", "clock", "drop", "bolt", "flame")
+
+
+def nfc_list(value):
+    return [nfc(v) for v in value] if isinstance(value, list) else nfc(value)
+
+
+class Anchor(_Model):
+    """Stick a HUD item to a tracked object (world-space UI). Tracks are made with `vedit track`."""
+
+    track: str = Field(description="Tên track: projects/<slug>/analysis/tracks/<tên>.json (tạo bằng `vedit track`)")
+    point: HudPoint = Field("center", description="Điểm trên hộp bám: center, top (mép trên), bottom, left, right, "
+                                                  "top_left, top_right, bottom_left, bottom_right")
+    dx: float = Field(0, ge=-1, le=1, description="Lệch ngang thêm, theo tỉ lệ chiều rộng khung")
+    dy: float = Field(0, ge=-1, le=1, description="Lệch dọc thêm, theo tỉ lệ chiều cao khung (âm = lên trên)")
+    lag: float = Field(0, ge=0, le=0.9, description="0 = dính chặt vật; 0.3-0.6 = trôi theo mềm như UI lơ lửng")
+
+
+class ValueKey(_Model):
+    t: float = Field(ge=0, description="Timeline (giây)")
+    v: float = Field(description="Giá trị tại mốc này (meter: 0..1; counter: số, hoặc số giây với format timer)")
+    ease: Literal["linear", "in", "out", "inout", "hold"] = Field(
+        "inout", description="Cách đi TỪ mốc trước tới mốc này: inout mượt, out = nhanh rồi chậm, hold = nhảy cóc")
+
+
+class _Hud(_Model):
+    start: float = Field(ge=0, description="Timeline (giây)")
+    end: float = Field(gt=0, description="Timeline (giây)")
+    x: float = Field(0.5, ge=0, le=1, description="Tâm ngang (tỉ lệ khung) khi không bám vật")
+    y: float = Field(0.5, ge=0, le=1, description="Tâm dọc (tỉ lệ khung) khi không bám vật")
+    anchor: Anchor | None = Field(None, description="Bám theo vật đã track (thay cho x/y)")
+    enter: HudEase = Field("pop", description="Vào: pop (bật nảy), slide (trượt lên), stamp (đập xuống), fade, none")
+    exit: HudEase = Field("fade", description="Ra: fade, pop (thu nhỏ), slide (trượt lên), stamp, none")
+    color: str = Field("#3CF2FF", pattern=HEX_COLOR, description="Màu neon chính (viền, chữ HUD)")
+    accent_color: str = Field("#FFD23F", pattern=HEX_COLOR, description="Màu thưởng / khoá / tick / vùng chuẩn")
+    text_color: str = Field("#FFFFFF", pattern=HEX_COLOR)
+    size: int = Field(44, ge=14, le=240, description="Cỡ chữ chính (px canvas)")
+    font: str | None = Field(None, description="Font chữ HUD, vd 'Chakra Petch'; mặc định theo cấu hình")
+
+    @model_validator(mode="after")
+    def _times(self):
+        if self.end <= self.start:
+            raise ValueError(f"hud {getattr(self, 'type', '')}: end phải lớn hơn start")
+        return self
+
+
+class Reticle(_Hud):
+    type: Literal["reticle"]
+    text: str = Field("", description="Nhãn cạnh khung ngắm, vd 'CHILI'")
+    sub: str = Field("", description="Dòng nhỏ dưới nhãn; mặc định 'SCANNING…' rồi 'LOCKED' khi khoá")
+    lock_at: float | None = Field(None, description="Timeline (giây) khoá mục tiêu: khung co sát vật, đổi "
+                                                    "accent_color, chớp sáng. Mặc định start + 0.4")
+    w: float = Field(0.3, gt=0, le=1, description="Rộng khung (tỉ lệ khung) khi không bám vật")
+    h: float = Field(0.3, gt=0, le=1, description="Cao khung khi không bám vật")
+    pad: float = Field(0.06, ge=0, le=0.5, description="Nới khung ra ngoài hộp track (tỉ lệ cạnh)")
+
+    _nfc = field_validator("text", "sub", mode="before")(nfc)
+
+
+class Panel(_Hud):
+    type: Literal["panel"]
+    text: str = Field("QUEST", description="Tiêu đề bảng, vd 'QUEST: CÀ PHÁO MUỐI'")
+    items: list[str] = Field(min_length=1, max_length=8, description="Các dòng nhiệm vụ / công thức")
+    checks: list[float | None] = Field(default_factory=list,
+                                       description="Timeline (giây) tick từng dòng, cùng thứ tự items; null = chưa tick")
+    width: float = Field(0.62, gt=0.1, le=0.96, description="Rộng bảng (tỉ lệ khung)")
+
+    _nfc = field_validator("text", "items", mode="before")(nfc_list)
+
+    @model_validator(mode="after")
+    def _check_checks(self) -> "Panel":
+        if len(self.checks) > len(self.items):
+            raise ValueError(f"panel: {len(self.checks)} mốc checks nhưng chỉ có {len(self.items)} dòng items")
+        return self
+
+
+class Meter(_Hud):
+    type: Literal["meter"]
+    text: str = Field("", description="Nhãn, vd 'WATER LEVEL'")
+    keys: list[ValueKey] = Field(min_length=1, description="Giá trị 0..1 theo thời gian")
+    zone: tuple[float, float] | None = Field(None, description="Vùng chuẩn [từ, đến] trong 0..1, sáng lên khi giá "
+                                                               "trị nằm trong")
+    style: Literal["fill", "needle"] = Field("fill", description="fill = thanh đầy dần; needle = kim chạy (canh thời điểm)")
+    orientation: Literal["horizontal", "vertical"] = "horizontal"
+    length: float = Field(0.5, gt=0.05, le=0.95, description="Dài thanh (tỉ lệ rộng khung nếu ngang, cao nếu dọc)")
+    thickness: int = Field(26, ge=6, le=120, description="Độ dày (px)")
+    show_value: bool = Field(True, description="Hiện % cạnh nhãn")
+
+    _nfc = field_validator("text", mode="before")(nfc)
+
+    @model_validator(mode="after")
+    def _check_zone(self) -> "Meter":
+        if self.zone is not None and not 0 <= self.zone[0] < self.zone[1] <= 1:
+            raise ValueError(f"meter: zone {list(self.zone)} phải là [từ, đến] với 0 ≤ từ < đến ≤ 1")
+        return self
+
+
+class Counter(_Hud):
+    type: Literal["counter"]
+    text: str = Field("", description="Nhãn nhỏ phía trên số, vd 'SCORE', 'COMBO', 'FERMENTING'")
+    keys: list[ValueKey] = Field(min_length=1, description="Giá trị theo thời gian (đếm mượt giữa các mốc)")
+    format: Literal["int", "timer", "combo", "percent"] = Field(
+        "int", description="int = 1,250; timer = HH:MM:SS (v là số giây: 259200 = 72:00:00); combo = ×3; percent = 87%")
+    prefix: str = ""
+    suffix: str = ""
+    box: bool = Field(True, description="Nền HUD mờ phía sau")
+
+    _nfc = field_validator("text", "prefix", "suffix", mode="before")(nfc)
+
+
+class Popup(_Hud):
+    type: Literal["popup"]
+    text: str = Field(min_length=1, description="Chữ thưởng: 'PERFECT!', '+50', 'COMBO ×3'")
+    sub: str = Field("", description="Dòng nhỏ bên dưới, vd '+100 PTS'")
+    enter: HudEase = "stamp"
+    exit: HudEase = "pop"
+    rise: float = Field(0.05, ge=0, le=0.3, description="Bay lên bao nhiêu (tỉ lệ cao khung) trong lúc hiện")
+    burst: bool = Field(True, description="Tia sáng toả ra phía sau lúc bật lên")
+    tilt: float = Field(-4, ge=-25, le=25, description="Nghiêng (độ, dương = ngược kim đồng hồ)")
+    shadow_color: str = Field("#FF3D7F", pattern=HEX_COLOR, description="Màu bóng đổ cứng phía sau chữ")
+
+    _nfc = field_validator("text", "sub", mode="before")(nfc)
+
+
+class Slots(_Hud):
+    type: Literal["slots"]
+    count: int = Field(4, ge=1, le=8, description="Số ô túi đồ")
+    items: list[str] = Field(default_factory=list, description="Tên vật phẩm theo thứ tự vào túi (ngắn: 'TỎI')")
+    icons: list[HudIcon | None] = Field(default_factory=list, description="Icon cho từng vật phẩm (tuỳ chọn)")
+    times: list[float] = Field(default_factory=list, description="Timeline (giây) vật phẩm thứ i chạm vào ô")
+    sources: list[Anchor | None] = Field(default_factory=list,
+                                         description="Vật phẩm thứ i bay ra từ vật thật này (track); thiếu = from_x/y")
+    from_x: float = Field(0.5, ge=0, le=1)
+    from_y: float = Field(0.45, ge=0, le=1)
+    fly: float = Field(0.45, ge=0.1, le=2, description="Thời gian bay (giây)")
+    slot_size: int = Field(96, ge=40, le=240, description="Cạnh ô (px)")
+
+    _nfc = field_validator("items", mode="before")(nfc_list)
+
+    @model_validator(mode="after")
+    def _check_items(self) -> "Slots":
+        if len(self.times) > self.count:
+            raise ValueError(f"slots: {len(self.times)} mốc times nhưng chỉ có {self.count} ô")
+        return self
+
+
+class Card(_Hud):
+    type: Literal["card"]
+    text: str = Field("DISH COMPLETE!", description="Tiêu đề thẻ")
+    stars: int = Field(3, ge=0, le=3, description="Số sao đạt được (trên 3)")
+    star_delay: float = Field(0.5, ge=0, le=5, description="Sao đầu tiên hiện sau khi thẻ vào bao lâu (giây)")
+    star_gap: float = Field(0.28, ge=0.05, le=2)
+    items: list[str] = Field(default_factory=list, max_length=5, description="Dòng phụ, vd 'Độ giòn: 100%'")
+    width: float = Field(0.78, gt=0.2, le=0.96)
+
+    _nfc = field_validator("text", "items", mode="before")(nfc_list)
+
+
+class Prompt(_Hud):
+    type: Literal["prompt"]
+    button: str = Field("A", min_length=1, max_length=3, description="Chữ trên nút tay cầm: A, B, X, Y, LT, RT")
+    text: str = Field("GRAB", description="Hành động: GRAB, POUR, HOLD TO SEAL…")
+    hold: tuple[float, float] | None = Field(None, description="Vòng giữ-nút chạy đầy từ giây này tới giây kia "
+                                                               "(timeline)")
+    blink: bool = Field(True, description="Nhấp nháy nhẹ chờ bấm (dừng khi vòng giữ chạy)")
+
+    _nfc = field_validator("text", mode="before")(nfc)
+
+    @model_validator(mode="after")
+    def _check_hold(self) -> "Prompt":
+        if self.hold is not None and self.hold[1] <= self.hold[0]:
+            raise ValueError("prompt: hold phải là [giây bắt đầu, giây đầy vòng] với giây sau lớn hơn")
+        return self
+
+
+class Icon(_Hud):
+    type: Literal["icon"]
+    icon: HudIcon = Field(description="star, check, lock, coin, heart, hand, clock, drop, bolt, flame")
+    spin: bool = Field(False, description="Lắc / xoay nhẹ liên tục (đồng xu, sao)")
+
+
+class Visor(_Hud):
+    type: Literal["visor"]
+    text: str = Field("LEVEL 1", description="Tên màn chơi ở thanh trên, vd 'LEVEL 1 · CÀ PHÁO MUỐI'")
+    rec: bool = Field(True, description="Chấm REC nhấp nháy góc trên phải")
+    clock: bool = Field(True, description="Đồng hồ chạy góc trên trái")
+    scanlines: bool = Field(False, description="Vạch quét mờ toàn màn hình")
+    margin: float = Field(0.035, ge=0, le=0.2, description="Khoảng cách góc khung kính tới mép (tỉ lệ rộng)")
+
+    _nfc = field_validator("text", mode="before")(nfc)
+
+
+HudItem = Annotated[Union[Reticle, Panel, Meter, Counter, Popup, Slots, Card, Prompt, Icon, Visor],
+                    Field(discriminator="type")]
 
 
 class ExportSettings(_Model):
@@ -286,6 +493,8 @@ class EditPlan(_Model):
     captions: Captions | None = None
     graphics: list[Graphic] = Field(default_factory=list)
     motion: list[Motion] = Field(default_factory=list)
+    hud: list[HudItem] = Field(default_factory=list, description="Giao diện game: reticle, panel, meter, counter, "
+                                                                  "popup, slots, card, prompt, icon, visor")
     look: Look = Field(default_factory=Look)
     images: list[ImageOverlay] = Field(default_factory=list)
     audio: list[AudioTrack] = Field(default_factory=list)
@@ -345,11 +554,33 @@ class EditPlan(_Model):
             extra = f" x{clip.speed}" if clip.speed != 1 else ""
             tr = f" [{clip.transition.type} {clip.transition.duration}s]" if clip.transition else ""
             lines.append(f"  #{i} @{off:6.2f}s  {clip.source} {span}{extra}{tr}  {clip.note}".rstrip())
-        extras = [f"{len(self.texts)} chữ", f"{len(self.graphics)} đồ hoạ", f"{len(self.motion)} motion",
+        extras = [f"{len(self.texts)} chữ", f"{len(self.graphics)} đồ hoạ", f"{len(self.hud)} HUD",
+                  f"{len(self.motion)} motion",
                   f"captions {len(self.captions.segments) if self.captions else 0} đoạn", f"{len(self.audio)} audio",
                   f"look {self.look.preset}"]
         lines.append("  " + ", ".join(extras))
         return "\n".join(lines)
+
+
+def frame_layout(plan: EditPlan, fps: int) -> tuple[list[int], list[int], int]:
+    """Lay the timeline out in whole frames: frames per clip, frames each clip overlaps the previous one
+    (transition length, 0 for a hard cut) and total frames. Clip boundaries are rounded from the plan's
+    exact offsets rather than summed from rounded lengths, so video, audio and text never drift apart by
+    more than half a frame, however many clips there are."""
+    frames: list[int] = []
+    overlaps: list[int] = []
+    prev_end = 0
+    for clip, offset in zip(plan.clips, plan.clip_offsets()):
+        start = round(offset * fps) if clip.transition else prev_end
+        end = max(start + 1, round((offset + clip.timeline_duration) * fps))
+        overlap = 0
+        if clip.transition and frames:
+            overlap = min(max(prev_end - start, 1), frames[-1] - 1, end - start - 1)
+            start = prev_end - overlap
+        frames.append(end - start)
+        overlaps.append(overlap)
+        prev_end = end
+    return frames, overlaps, prev_end
 
 
 def validate_against_media(plan: EditPlan, base_dir: Path, probe) -> list[str]:
@@ -390,6 +621,19 @@ def validate_against_media(plan: EditPlan, base_dir: Path, probe) -> list[str]:
     for i, m in enumerate(plan.motion):
         if m.start >= total:
             problems.append(f"motion #{i} bắt đầu ({m.start:.2f}s) sau khi video kết thúc ({total:.2f}s)")
+    for i, item in enumerate(plan.hud):
+        where = f"hud #{i} ({item.type})"
+        if item.start >= total:
+            problems.append(f"{where} bắt đầu ({item.start:.2f}s) sau khi video kết thúc ({total:.2f}s)")
+            continue
+        spans = [(item.anchor, item.start, item.end)] if item.anchor else []
+        if item.type == "slots":
+            spans += [(src, max(item.times[k] - item.fly, 0), item.times[k])
+                      for k, src in enumerate(item.sources) if src is not None and k < len(item.times)]
+        for anchor, a, b in spans:
+            from .world import check_anchor
+
+            problems += check_anchor(plan, base_dir, anchor, a, b, where, probe)
     for i, img in enumerate(plan.images):
         if not plan.resolve(img.path, base_dir).exists():
             problems.append(f"image #{i}: không tìm thấy file {img.path}")

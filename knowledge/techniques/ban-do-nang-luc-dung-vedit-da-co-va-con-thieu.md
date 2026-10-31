@@ -43,7 +43,7 @@ thử nghiệm ffmpeg 6.1.1 trên `inbox/video-01.mov`. Ký hiệu độ khó: *
 | Cắt | Micro-fade âm thanh ở biên clip | **Chưa** | — |
 | Thời gian | Tốc độ hằng số 0.25–4x | Có | ramp bậc thang: tách 1 cảnh thành 3–4 clip 1.0/0.6/0.4/1.0 |
 | Thời gian | Speed ramp mượt, slow-mo nội suy | **Chưa** | như trên |
-| Thời gian | Dừng hình | **Chưa** | trích frame PNG bằng ffmpeg → clip ảnh `duration` 0.6–1 s + `flash` + SFX |
+| Thời gian | Dừng hình | Có (`Clip.freeze`, khung cuối clip) | dừng giữa clip: tách clip tại điểm dừng |
 | Thời gian | Time-lapse >4x, tua ngược | **Chưa** (speed tối đa 4) | — |
 | Máy | Punch, shake | Có (tâm khung, không blur) | — |
 | Máy | Ken Burns | Một phần (tuyến tính, tâm giữa, zoompan có thể rung) | `focus_x/y` chỉ dời khung cắt, không dời tâm zoom |
@@ -111,8 +111,9 @@ thử nghiệm ffmpeg 6.1.1 trên `inbox/video-01.mov`. Ký hiệu độ khó: *
 13. **Phân tích nâng cao** — cú cắt ẩn/flash frame (`scdet` từng frame — đã thử: 3 cú cắt ẩn 6,40 / 9,17 / 18,17 s mà
     detect_scenes bỏ sót đều nằm trong top-14 điểm `scdet`, lẫn với đỉnh do chuyển động → lọc thêm "đỉnh đơn frame"), thống kê màu từng cảnh, gợi ý cặp match cut/loop (SSIM), phân tích video tham chiếu (ASL, cường độ chuyển
     động, loudness, màu) để Agent 2 "bắt chước vibe". **M**.
-14. **Hiệu ứng cần tách chủ thể** — chữ sau chủ thể, reveal theo vật, callout bám vật: rembg (ảnh, CPU) /
-    RobustVideoMatting (video người, nhanh trên GPU) / tracker OpenCV. **L**.
+14. **Hiệu ứng cần tách chủ thể** — chữ sau chủ thể, reveal theo vật: rembg (ảnh, CPU) / RobustVideoMatting (video
+    người, nhanh trên GPU). **L**. *(Đồ hoạ bám vật đã có: `vedit track` (OpenCV CSRT) + `hud[].anchor` — xem
+    `techniques/giao-dien-game-hud-bam-vat-cho-video`.)*
 15. **Parallax 3D** — DepthFlow (depth model + shader, cần GPU) hoặc `displace` với depth map. Hũ thuỷ tinh/vật phản
     chiếu là ca khó. **L**.
 16. **Time-lapse >4x + tua ngược** — nới giới hạn `speed`, trộn frame bằng `tmix` (không dùng `enable=`), `reverse`/

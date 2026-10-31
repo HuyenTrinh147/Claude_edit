@@ -59,3 +59,12 @@ Màu: `color` (nền nhãn/huy hiệu), `text_color`, `accent_color` (chấm, đ
 `{"path": "sfx:pop", "role": "sfx", "start": 2.0, "volume": 0.35}` — `pop` (chữ/đồ hoạ bật ra), `click`,
 `ding` (thành phẩm, ý chính), `sparkle` (lấp lánh), `whoosh` (chuyển cảnh, chữ trượt), `thud` (va chạm nặng),
 `rise` (dồn nén trước điểm nhấn). Video ASMR: volume 0.15–0.35 để không át tiếng thật.
+Âm 8-bit cho phong cách game: `pickup`, `coin`, `lock`, `combo`, `levelup`, `slash`, `zip`, `tick`, `complete`, `buzz`.
+`pitch` (nửa cung, −24..24) đổi cao độ — chuỗi combo cao dần 0, 2, 4.
+
+## Giao diện game & bám vật (`hud`, `vedit track`)
+Khung kính VR, khung ngắm bám vật, bảng nhiệm vụ tick dần, thanh đo có vùng chuẩn, số chạy / đồng hồ đếm lùi, chữ thưởng
+PERFECT!, túi đồ, thẻ ★★★, nút tay cầm VR, icon — xem `techniques/giao-dien-game-hud-bam-vat-cho-video`.
+
+## Dừng hình (`Clip.freeze`)
+`"freeze": 1.0` giữ khung cuối của clip thêm 1 giây (tiếng gốc im) — chỗ cho thẻ kết / khoảnh khắc "PAUSE".

@@ -18,8 +18,9 @@ from .ass import ass_color as _ass_color  # noqa: F401  (re-exported for callers
 from .ass import ass_text as _ass_text  # noqa: F401
 from .ass import ass_time as _ass_time  # noqa: F401
 from .ass import build_ass
-from .edl import EditPlan
+from .edl import EditPlan, frame_layout  # noqa: F401  (frame_layout re-exported)
 from .media import extract_frame, probe, require_ffmpeg
+from .world import PUNCH_ATTACK, SHAKE_FREQ_X, SHAKE_FREQ_Y, SHAKE_ZOOM, motion_window
 
 SAFE_FILTER_PATH = re.compile(r"^[\w./\-]+$")
 
@@ -89,6 +90,55 @@ SFX = {
 }
 
 
+def _sq(freq: str) -> str:
+    """Square wave (NES-style pulse) for chiptune game sounds."""
+    return f"sgn(sin(2*PI*{freq}*t))"
+
+
+def _steps(notes: list[float], step: float) -> str:
+    """Frequency that walks through `notes`, `step` seconds each (arpeggio)."""
+    expr = f"{notes[-1]:g}"
+    for i in range(len(notes) - 2, -1, -1):
+        expr = f"if(lt(t,{step * (i + 1):g}),{notes[i]:g},{expr})"
+    return expr
+
+
+def _chip(expr: str, dur: float, lowpass: int = 7500) -> str:
+    return (f"aevalsrc='{expr}':s=48000:d={dur:g},lowpass=f={lowpass},"
+            f"afade=t=out:st={dur - 0.03:g}:d=0.03")
+
+
+C5, E5, G5, B5, C6, D6, E6, G6, B6, C7, D7 = 523.25, 659.25, 783.99, 987.77, 1046.5, 1174.7, 1318.5, 1568.0, \
+    1975.5, 2093.0, 2349.3
+SFX.update({
+    # item picked up: quick rising arpeggio
+    "pickup": _chip(f"0.26*{_sq(_steps([C6, E6, G6, C7], 0.04))}*if(lt(t,0.16),1,exp(-(t-0.16)*30))", 0.26),
+    # coin: the classic two-note ding
+    "coin": _chip(f"0.28*{_sq(B5)}*lt(t,0.075)+0.28*{_sq(E6)}*gte(t,0.075)*exp(-(t-0.075)*9)", 0.45),
+    # target lock-on: beep-beep-BEEP
+    "lock": _chip(f"0.22*{_sq(1760)}*(lt(t,0.05)+between(t,0.08,0.13))+0.22*{_sq(2637)}*gte(t,0.16)"
+                  "*exp(-(t-0.16)*10)", 0.42),
+    # combo: very fast double arpeggio
+    "combo": _chip(f"0.24*{_sq(_steps([G5, B5, D6, G6, B6, D7], 0.03))}*if(lt(t,0.18),1,exp(-(t-0.18)*18))", 0.34),
+    # level up: fanfare then a held major third
+    "levelup": _chip(f"0.2*{_sq(_steps([C5, E5, G5, C6], 0.09))}*lt(t,0.36)"
+                     f"+gte(t,0.36)*exp(-(t-0.36)*3.2)*(0.17*{_sq(C6)}+0.13*{_sq(E6)})", 1.0),
+    # slash: noise swipe + falling pulse (knife cut)
+    "slash": "aevalsrc='0.34*(2*random(0)-1)*exp(-t*16)+0.16*sgn(sin(2*PI*(1600*t-4500*t*t)))*exp(-t*20)'"
+             ":s=48000:d=0.22,highpass=f=500,lowpass=f=10000,afade=t=out:st=0.19:d=0.03",
+    # zip: rising sweep (UI swoosh, item flies into the bag)
+    "zip": _chip("0.2*sgn(sin(2*PI*(250*t+10000*t*t)))*exp(-max(t-0.1,0)*40)", 0.16),
+    # tick: timer / countdown tick
+    "tick": f"aevalsrc='0.45*{_sq(2800)}*exp(-t*220)+0.25*sin(2*PI*1400*t)*exp(-t*160)':s=48000:d=0.05,"
+            "lowpass=f=9000",
+    # quest / dish complete: arpeggio into a major chord
+    "complete": _chip(f"0.2*{_sq(_steps([G5, C6, E6, G6], 0.06))}*lt(t,0.24)"
+                      f"+gte(t,0.24)*exp(-(t-0.24)*2.8)*0.11*({_sq(C6)}+{_sq(E6)}+{_sq(G6)})", 1.1),
+    # buzz: wrong / time's up
+    "buzz": _chip(f"0.2*({_sq(110)}+{_sq(116.5)})*lt(t,0.3)*(0.6+0.4*{_sq(16)})", 0.34, lowpass=4000),
+})
+
+
 def look_filters(plan: EditPlan) -> list[str]:
     look = plan.look
     filters = [LOOKS[look.preset]] if look.preset in LOOKS else []
@@ -121,39 +171,19 @@ def motion_filter(plan: EditPlan, fps: int, W: int, H: int) -> str | None:
     if not plan.motion:
         return None
     z, x, y = ["1"], ["0"], ["0"]
-    for m in plan.motion:
-        a, d = round(m.start * fps), max(2, round(m.duration * fps))
+    att = PUNCH_ATTACK
+    for m in plan.motion:  # keep in step with world.camera_at (HUD anchors follow these moves)
+        a, d = motion_window(m.start, m.duration, fps)
         win, p = f"between(in,{a},{a + d})", f"((in-{a})/{d})"
         if m.type == "punch":
-            env = f"if(lt({p},0.2),sin(PI/2*{p}/0.2),cos(PI/2*({p}-0.2)/0.8))"
+            env = f"if(lt({p},{att:g}),sin(PI/2*{p}/{att:g}),cos(PI/2*({p}-{att:g})/{1 - att:g}))"
             z.append(f"{m.amount:g}*if({win},{env},0)")
         else:
             decay = f"(1-{p})"
-            z.append(f"{2.2 * m.amount:g}*if({win},{decay},0)")
-            x.append(f"{m.amount:g}*W*if({win},sin((in-{a})*2.4)*{decay},0)")
-            y.append(f"{m.amount:g}*H*if({win},cos((in-{a})*3.1)*{decay},0)")
+            z.append(f"{SHAKE_ZOOM * m.amount:g}*if({win},{decay},0)")
+            x.append(f"{m.amount:g}*W*if({win},sin((in-{a})*{SHAKE_FREQ_X:g})*{decay},0)")
+            y.append(f"{m.amount:g}*H*if({win},cos((in-{a})*{SHAKE_FREQ_Y:g})*{decay},0)")
     return camera("+".join(z), "+".join(x), "+".join(y))
-
-
-def frame_layout(plan: EditPlan, fps: int) -> tuple[list[int], list[int], int]:
-    """Lay the timeline out in whole frames: frames per clip, frames each clip overlaps the previous one
-    (transition length, 0 for a hard cut) and total frames. Clip boundaries are rounded from the plan's
-    exact offsets rather than summed from rounded lengths, so video, audio and text never drift apart by
-    more than half a frame, however many clips there are."""
-    frames: list[int] = []
-    overlaps: list[int] = []
-    prev_end = 0
-    for clip, offset in zip(plan.clips, plan.clip_offsets()):
-        start = round(offset * fps) if clip.transition else prev_end
-        end = max(start + 1, round((offset + clip.timeline_duration) * fps))
-        overlap = 0
-        if clip.transition and frames:
-            overlap = min(max(prev_end - start, 1), frames[-1] - 1, end - start - 1)
-            start = prev_end - overlap
-        frames.append(end - start)
-        overlaps.append(overlap)
-        prev_end = end
-    return frames, overlaps, prev_end
 
 
 def build_command(
@@ -229,16 +259,17 @@ def build_command(
         if clip.zoom != "none":
             a = clip.zoom_amount
             post.append(camera(f"1+{a:g}*in/{n}" if clip.zoom == "in" else f"1+{a:g}-{a:g}*in/{n}"))
-        post += ["setsar=1", "format=yuv420p", "tpad=stop_mode=clone:stop_duration=1",
+        post += ["setsar=1", "format=yuv420p", f"tpad=stop_mode=clone:stop_duration={_num(clip.freeze + 1)}",
                  f"trim=end_frame={n}", "setpts=PTS-STARTPTS", f"settb=1/{fps}"]
         graph.append(f"[c{i}]{','.join(post)}[v{i}]")
 
         if has_audio:
             achain = ["asetpts=PTS-STARTPTS", *_atempo_chain(clip.speed), f"volume={clip.volume:g}", AUDIO_FMT,
                       "apad", f"atrim=end_sample={samples(n)}", "asetpts=PTS-STARTPTS"]
-            if n / fps > 4 * AUDIO_EDGE_FADE:
+            heard = min(n / fps, clip.source_duration / clip.speed)  # a freeze is silent
+            if heard > 4 * AUDIO_EDGE_FADE:
                 achain += [f"afade=t=in:d={AUDIO_EDGE_FADE}",
-                           f"afade=t=out:st={n / fps - AUDIO_EDGE_FADE:.6f}:d={AUDIO_EDGE_FADE}"]
+                           f"afade=t=out:st={heard - AUDIO_EDGE_FADE:.6f}:d={AUDIO_EDGE_FADE}"]
             graph.append(f"[{idx}:a]{','.join(achain)}[a{i}]")
         else:
             graph.append(f"anullsrc=r={SAMPLE_RATE}:cl=stereo,atrim=end_sample={samples(n)},{AUDIO_FMT}[a{i}]")
@@ -293,9 +324,10 @@ def build_command(
         cur_v = f"vi{k}"
 
     # 5) texts, captions and motion graphics via ASS
-    if plan.texts or plan.graphics or (plan.captions and plan.captions.segments):
+    if plan.texts or plan.graphics or plan.hud or (plan.captions and plan.captions.segments):
         work_dir.mkdir(parents=True, exist_ok=True)
-        (work_dir / "overlays.ass").write_text(build_ass(plan, font, fonts_dir), encoding="utf-8")
+        (work_dir / "overlays.ass").write_text(
+            build_ass(plan, font, fonts_dir, fps=fps, base_dir=base_dir, probe=probe), encoding="utf-8")
         opts = "subtitles=overlays.ass"
         if fonts_dir and fonts_dir.is_dir() and SAFE_FILTER_PATH.match(str(fonts_dir.resolve())):
             opts += f":fontsdir={fonts_dir.resolve()}"
@@ -306,8 +338,9 @@ def build_command(
     # 6) audio: voice bus (clips + voiceover + sfx), music bus (ducked), loudness
     voice_tracks, music_tracks = [], []
     for k, track in enumerate(plan.audio):
+        pitch = [f"asetrate={SAMPLE_RATE * 2 ** (track.pitch / 12):.2f}"] if track.pitch else []
         if track.builtin is not None:
-            chain = [SFX[track.builtin], AUDIO_FMT, f"volume={track.volume:g}"]
+            chain = [SFX[track.builtin], *pitch, AUDIO_FMT, f"volume={track.volume:g}"]
             if track.start > 0:
                 chain.append(f"adelay=delays={int(track.start * 1000)}:all=1")
             graph.append(f"{','.join(chain)}[t{k}]")
@@ -317,7 +350,8 @@ def build_command(
         dur = track.duration or max(total - track.start, 0.1)
         args = ["-stream_loop", "-1"] if track.loop and track.role == "music" else []
         idx = add_input(*args, "-ss", _num(track.source_start), "-i", str(plan.resolve(track.path, base_dir)))
-        chain = [f"atrim=duration={_num(dur)}", "asetpts=PTS-STARTPTS", AUDIO_FMT, f"volume={track.volume:g}"]
+        chain = [f"atrim=duration={_num(dur)}", "asetpts=PTS-STARTPTS", AUDIO_FMT, *pitch, AUDIO_FMT,
+                 f"volume={track.volume:g}"]
         if track.fade_in > 0:
             chain.append(f"afade=t=in:st=0:d={_num(min(track.fade_in, dur))}")
         if track.fade_out > 0:
