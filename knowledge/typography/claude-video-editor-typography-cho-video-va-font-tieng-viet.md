@@ -95,6 +95,8 @@ chưa có quy tắc cặp font/độ đậm trong prompt; chưa kiểm tra font 
    (font VF dùng trực tiếp với libass cần thử trước — ưu tiên file static). Dễ.
 3. `vedit validate` cảnh báo khi font trong EditPlan **thiếu glyph** cho ký tự của chữ (đọc `cmap` bằng fontTools —
    bắt lỗi dấu tiếng Việt rơi font). Dễ–vừa.
-4. Prompt Agent 2/3: "1 font biểu cảm + 1 font thông tin, 800–900 vs 400–500, ≤ 2 họ font; tiêu đề ≥ 6% chiều cao
-   khung dọc; chữ trên màn đọc xong trong 2/3 thời gian hiển thị". Dễ.
+4. Prompt Agent 2/3: "1 font biểu cảm + 1 font thông tin, 800–900 vs 400–500, ≤ 2 họ font; chữ trên màn đọc xong
+   trong 2/3 thời gian hiển thị". Mức sàn cỡ chữ của HF (tiêu đề 60px, thân 20px) tính cho khung 1920×1080; với khung
+   dọc 1080×1920 xem trên điện thoại nên lớn hơn — ví dụ trong kho vedit dùng `size` 92 cho tiêu đề (nhận định:
+   kiểm bằng khung preview thu nhỏ cỡ màn hình điện thoại). Dễ.
 5. Bật `tabular-nums` tương đương: dùng JetBrains Mono cho bộ đếm/giá khi có animation đếm số (tránh nhảy bề rộng). Dễ.

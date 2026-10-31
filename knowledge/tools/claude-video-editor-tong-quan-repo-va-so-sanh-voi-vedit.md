@@ -25,6 +25,9 @@ sources:
   - https://github.com/heygen-com/hyperframes
   - https://raw.githubusercontent.com/heygen-com/hyperframes/main/LICENSE
   - https://github.com/browser-use/video-use
+  - https://raw.githubusercontent.com/browser-use/video-use/main/SKILL.md
+  - https://raw.githubusercontent.com/browser-use/video-use/main/helpers/render.py
+  - https://raw.githubusercontent.com/browser-use/video-use/main/helpers/transcribe.py
   - https://github.com/nateherkai/hyperframes-student-kit
 ---
 # claude-video-editor: Tổng quan repo và so sánh với vedit
@@ -121,16 +124,24 @@ một ảnh/cảnh → `manifest.json` → `build_scenes.py` → lint/render →
 - Hệ thống: `ffmpeg`/`ffprobe`, Node ≥ 22 (`npx hyperframes`, `install.sh` ghim `hyperframes@0.6.70`, ví dụ ghim
   0.6.88), Google Chrome/Chromium (render headless), Python ≥ 3.10 (venv riêng cho video-use: `requests`, `librosa`,
   `matplotlib`, `pillow`, `numpy`); `yt-dlp` tuỳ chọn.
-- Khoá duy nhất: `ELEVENLABS_API_KEY` (Scribe để transcribe — có phí theo lượng; v3 TTS dùng credit).
+- Khoá duy nhất: `ELEVENLABS_API_KEY` — Scribe để transcribe (README: "free tier covers transcription"; install.md
+  vẫn dặn không transcribe thử vì "Scribe costs real money") và v3 TTS (tốn credit của gói).
 - Cài: `git clone … && ./install.sh`, rồi trong Claude Code: `/plugin marketplace add ./` và
   `/plugin install claude-video-editor`. Dùng: `cp -r templates/project ~/my-video`, thả clip vào `sources/`,
   nói "edit these into a 60-second promo". Kết quả trong `edit/`.
 
 ## 8. Giới hạn quan sát được khi đọc mã
 
-- Phụ thuộc dịch vụ trả phí (Scribe) cho bước "hiểu video"; README video-use còn chê Whisper CPU cục bộ.
+- Bước "hiểu video" phụ thuộc dịch vụ ngoài tính credit (Scribe); SKILL video-use còn xếp "Running Whisper locally
+  on CPU" vào anti-pattern (chậm, chuẩn hoá mất từ đệm).
 - Nặng: Node + Chrome headless cho mọi overlay; mỗi caption/overlay là một lần render HTML riêng.
 - `render.py` ép 24 fps và 1080p cạnh dài; không có reframe dọc; overlay phải là video riêng.
+- **Bản video-use vendored đã cũ**: so với `browser-use/video-use` nhánh main (đối chiếu 2026-10-31), `SKILL.md` khác
+  22 dòng (upstream thêm: đo `ebur128` theo từng đoạn, **critic sub-agent** "roast, not praise" cho video sẽ đăng, mục
+  "Music and sound effects" — ít SFX hơn (~8 thay vì ~20 trong 18s), SFX "hit on the frame", duck nhạc −12 đến −15 dB —
+  và cảnh báo font web tải hỏng âm thầm); `helpers/render.py` khác 204 dòng (giữ fps nguồn/`--fps` thay vì ép 24,
+  `chunk_words` 2–3 từ, báo lỗi khi thiếu file phụ đề); `transcribe.py` thêm chọn audio track. `grade.py`,
+  `timeline_view.py`, `pack_transcripts.py` giống hệt. → Muốn tái dùng code video-use thì lấy bản upstream.
 - Tham chiếu "treo": `shader-transitions.md`, `shader-setup.md`, skill `hyperframes-animation-map`,
   `/marker-highlight`, `/seedance-loop-prompt`, dự án `video-projects/may-shorts-19`, các file `feedback_*.md` —
   được nhắc trong skill nhưng không có trong repo.
@@ -159,7 +170,7 @@ notice; phần MIT+Commons Clause (ví dụ `motion_check.py`, `build_scenes.py`
 
 | Khía cạnh | claude-video-editor | vedit hiện tại |
 |---|---|---|
-| Đối tượng | Talking head/tutorial/promo tiếng Anh, 16:9 là chính | Video ngắn dọc tiếng Việt (TikTok/Reels), cả video không lời (ASMR, nấu ăn) |
+| Đối tượng | Mọi loại footage tiếng Anh (talking head, tutorial, promo...); ví dụ chủ yếu 16:9, có skill riêng cho 9:16 | Video ngắn dọc tiếng Việt (TikTok/Reels), cả video không lời (ASMR, nấu ăn) |
 | Vai trò Claude | Một agent + skills, spawn sub-agent động | 3 subagent cố định (nghiên cứu, kịch bản, dựng) + bản API |
 | Hiểu video | Transcript cấp từ (Scribe) + timeline_view khi cần | `analysis.json`: cảnh, khoảng lặng, khung giữa cảnh, faster-whisper; `vedit frame --grid` |
 | Hợp đồng dựng | EDL tối giản + overlay là video render sẵn | EditPlan giàu: clips, texts, captions, graphics, motion, look, audio, transitions |
@@ -172,6 +183,25 @@ notice; phần MIT+Commons Clause (ví dụ `motion_check.py`, `build_scenes.py`
 | QA | Self-eval ở mọi điểm cắt, WCAG, animation-map, motion_check, cap 3 vòng | Khung giữa clip + lúc chữ xuất hiện |
 | Tương tác | Bắt buộc duyệt chiến lược + style; 2 cổng preview; `project.md` | `/lam-video` chạy thẳng tới bản final, không bước duyệt, không bộ nhớ dự án |
 
+## 11. Bản đồ ghi chú chi tiết (dùng với `vedit kb show <ref>`)
+
+| Chủ đề | Ref |
+|---|---|
+| Cách viết skill/prompt cho agent | `tools/claude-video-editor-cach-viet-skill-va-prompt-cho-agent` |
+| Quy trình hỏi – chốt – dựng – ghi nhớ | `techniques/claude-video-editor-quy-trinh-hoi-chot-dung-va-ghi-nho` |
+| Đọc video bằng transcript, quy tắc cắt | `techniques/claude-video-editor-doc-video-bang-transcript-va-quy-tac-cat` |
+| Vòng tự kiểm tra chất lượng | `techniques/claude-video-editor-vong-tu-kiem-tra-chat-luong-sau-render` |
+| Luật chuyển động, ngôn ngữ hình ảnh | `techniques/claude-video-editor-luat-chuyen-dong-va-ngon-ngu-hinh-anh` |
+| Playbook video dọc short-form | `techniques/claude-video-editor-playbook-video-doc-short-form` |
+| Chuyển cảnh theo ý nghĩa | `techniques/claude-video-editor-chon-chuyen-canh-theo-y-nghia` |
+| Phụ đề động, nhấn từ | `techniques/claude-video-editor-phu-de-dong-theo-nang-luong-va-nhan-tu` |
+| Ảnh tĩnh → cảnh chuyển động | `techniques/claude-video-editor-bien-anh-tinh-thanh-canh-chuyen-dong` |
+| Brief, storyboard, kịch bản | `scripting/claude-video-editor-brief-storyboard-tung-beat-va-kich-ban` |
+| Typography & font tiếng Việt | `typography/claude-video-editor-typography-cho-video-va-font-tieng-viet` |
+| Grade màu, tonemap HDR | `ffmpeg/claude-video-editor-grade-mau-tu-dong-va-tonemap-hdr` |
+| Công thức ffmpeg/ASS đã kiểm chứng | `ffmpeg/claude-video-editor-cong-thuc-ffmpeg-va-ass-rut-ra-tu-repo` |
+| Âm thanh: fade 30ms, loudnorm 2 lượt | `audio/claude-video-editor-am-thanh-fade-30ms-va-loudnorm-2-luot` |
+
 ## Áp dụng vào vedit
 
 **Đã có (vedit làm tốt hơn hoặc ngang)**: một filter graph (không mã hoá lại nhiều lần), timeline theo khung nguyên,
@@ -182,13 +212,17 @@ cần Chrome, ASS áp sau overlay ảnh (đúng Hard Rule 1), lưới toạ đ�
 
 1. **Cổng duyệt chiến lược + style profile trước khi dựng** (nguyên nhân khả dĩ nhất của "chưa đúng ý") — sửa
    skill `/lam-video` + Agent 2 trả "chiến lược 4–8 câu + bảng style" và chờ OK. Dễ.
-2. **Fade âm 30ms ở mọi biên clip** trong `render.py` (chống tiếng "bụp" khi cắt). Dễ.
-3. **Bộ nhớ dự án `projects/<slug>/project.md`** (quyết định, phản hồi người dùng, lý do) — agent đọc khi bắt đầu. Dễ.
-4. **Easing cho chữ/đồ hoạ**: thêm `accel` vào `\t`, tách `\move` thành event theo khung (đã kiểm chứng). Dễ–vừa.
-5. **`vedit captions`**: tự sinh phụ đề từ transcript theo đoạn cắt (chunk 2–4 từ, nhấn từ khoá). Vừa.
-6. **`vedit qa`**: soi mọi điểm cắt (filmstrip + waveform), vùng chết > 2.5s, va chạm/vùng an toàn, tương phản. Vừa.
+2. **Viết lại prompt Agent 2/3** theo mẫu Hard Rules / Guardrails (gọi tên thói quen mặc định) / Gates + checklist
+   "jaw-dropper mỗi ~5s, callback, payoff giữ ≥ 1s, stamp sau mục tiêu". Dễ.
+3. **Critic sub-agent sau preview** ("roast, not praise": vấn đề xếp hạng kèm timecode + 5 việc sửa đầu tiên). Dễ.
+4. **Fade âm 30ms ở mọi biên clip** trong `render.py` (chống tiếng "bụp" khi cắt) + loudnorm 2 lượt cho final. Dễ.
+5. **Bộ nhớ dự án `projects/<slug>/project.md`** (quyết định, phản hồi người dùng, lý do) — agent đọc khi bắt đầu. Dễ.
+6. **Easing cho chữ/đồ hoạ**: thêm `accel` vào `\t`, tách `\move` thành event theo khung (đã kiểm chứng). Dễ–vừa.
 7. **Ken Burns mượt bằng `perspective`** thay zoompan cho zoom chậm (zoompan bị bậc thang — đã đo). Dễ–vừa.
-8. **Tonemap HDR tự động** cho nguồn iPhone HLG/PQ + `look.auto` hiệu chỉnh nhẹ theo clip. Vừa.
-9. **Transition "whip" có motion blur** (xfade slide + `dblur`) và đồ hoạ `streak`, `marker` (đã kiểm chứng). Vừa.
-10. **Viết lại prompt agent** theo mẫu Hard Rules / Guardrails / Gates. Dễ.
-11. Dài hạn: layout chia đôi/PiP cho talking head; overlay video có alpha để nhận HyperFrames/Remotion. Khó.
+8. **Tonemap HDR tự động** cho nguồn iPhone HLG/PQ; sau đó `look.auto` hiệu chỉnh nhẹ theo clip. Dễ / vừa.
+9. **`vedit captions`**: tự sinh phụ đề từ transcript theo đoạn cắt (chunk 2–4 từ, nhấn từ khoá, cường độ karaoke). Vừa.
+10. **`vedit qa`**: soi mọi điểm cắt (filmstrip + waveform), vùng chết > 2.5s, va chạm/vùng an toàn, tương phản,
+    contact sheet. Vừa.
+11. **Transition "whip" có motion blur** (xfade slide + `dblur`) và đồ hoạ `streak`, `marker` (đã kiểm chứng). Vừa.
+12. **Font**: mặc định Be Vietnam Pro thay Inter; thêm font condensed/serif/mono có tiếng Việt; validate thiếu glyph. Dễ.
+13. Dài hạn: layout chia đôi/PiP cho talking head; overlay video có alpha để nhận HyperFrames/Remotion. Khó.

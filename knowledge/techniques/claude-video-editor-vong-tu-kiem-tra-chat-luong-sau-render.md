@@ -15,6 +15,7 @@ sources:
   - https://github.com/assafkip/claude-video-editor/blob/master/skills/website-to-hyperframes/references/step-7-validate.md
   - https://github.com/assafkip/claude-video-editor/blob/master/skills/generate-footage/scripts/motion_check.py
   - https://github.com/assafkip/claude-video-editor/blob/master/recipes/04-animate-stills.md
+  - https://raw.githubusercontent.com/browser-use/video-use/main/SKILL.md
 ---
 # claude-video-editor: Vòng tự kiểm tra chất lượng sau render
 
@@ -99,3 +100,8 @@ toàn, tương phản, vùng chết; không kiểm "đúng từng chữ"; không
 5. **Contact sheet** 6–9 khung (`ffmpeg … select,tile=3x3`) gửi kèm preview cho người dùng. Dễ.
 6. Prompt Agent 3: chọn mốc **theo lời/sự kiện** (từ được nói, tiếng va chạm) thay vì chỉ giữa clip; **tối đa 3 vòng**
    rồi báo điều chưa sửa được. Dễ.
+7. **Critic sub-agent** (ý từ bản video-use upstream, mới hơn bản vendored trong repo này): với video sẽ đăng, sau
+   preview spawn một sub-agent "mắt mới" nhận file preview + contact sheet + EditPlan + video tham chiếu của người
+   dùng, brief "roast, not praise": một kết luận, danh sách vấn đề xếp hạng **kèm timecode và bằng chứng** (khung,
+   mức âm), và **5 việc sửa trước tiên**. Agent 3 sửa theo đó trước khi gửi người dùng — nhắm thẳng vào lời chê
+   "thiếu sáng tạo/chưa đúng ý". Dễ (chỉ là prompt + Agent tool).
