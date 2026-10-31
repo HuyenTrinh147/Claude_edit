@@ -56,7 +56,8 @@ def test_build_command_graph(media, tmp_path):
     cmd = build_command(p, tmp_path / "o.mp4", base_dir=tmp_path, work_dir=tmp_path / "w")
     graph = cmd[cmd.index("-filter_complex") + 1]
     assert graph.count("xfade=") == 2 and graph.count("acrossfade=") == 2
-    assert "zoompan=" in graph and "boxblur=" in graph and "sidechaincompress" in graph
+    assert "perspective=" in graph and "boxblur=" in graph and "sidechaincompress" in graph
+    assert graph.count("afade=t=in:d=0.025") >= 1  # click-free audio edges on clips with sound
     assert "subtitles=overlays.ass" in graph and (tmp_path / "w" / "overlays.ass").exists()
     assert re.search(r"atempo=1\.5", graph)
     total_frames = int(cmd[cmd.index("-frames:v") + 1])

@@ -73,7 +73,8 @@ def test_build_ass_has_every_graphic_and_animation():
 def test_motion_filter_expressions():
     plan = EditPlan.model_validate(creative_plan())
     expr = motion_filter(plan, 25, 360, 640)
-    assert expr.startswith("zoompan=z='1+0.08*if(between(on,5,13)") and "sin((on-28)*2.4)" in expr
+    assert expr.startswith("perspective=") and "0.08*if(between(in,5,13)" in expr and "sin((in-28)*2.4)" in expr
+    assert ":interpolation=cubic:eval=frame" in expr
     assert motion_filter(EditPlan.model_validate(creative_plan(motion=[])), 25, 360, 640) is None
 
 
@@ -81,7 +82,8 @@ def test_graph_contains_look_motion_and_sfx(tmp_path):
     plan = EditPlan.model_validate(creative_plan())
     cmd = build_command(plan, tmp_path / "o.mp4", base_dir=tmp_path, work_dir=tmp_path / "w", fonts_dir=FONTS)
     graph = cmd[cmd.index("-filter_complex") + 1]
-    assert "colorbalance=" in graph and "vignette=" in graph and "noise=" in graph and "zoompan=z='1+" in graph
+    assert "colorbalance=" in graph and "vignette=" in graph and "noise=" in graph and "perspective=" in graph
+    assert "zoompan" not in graph  # whole-pixel zoompan made slow moves jitter
     assert graph.count("aevalsrc=") == 6 and "anoisesrc=" in graph
     assert f"fontsdir={FONTS}" in graph
 

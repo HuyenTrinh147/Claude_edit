@@ -2,6 +2,7 @@
 
 projects/<slug>/
   project.json        metadata (input path, brief, Google Drive ids)
+  project.md          memory: chosen concept, decisions, the user's feedback verbatim, version history
   analysis/           analysis.json + keyframes (frames/)
   script/             script.md, script.json (Agent 2)
   edit_plan.json      EditPlan (Agent 2 writes, Agent 3 edits/renders)
@@ -52,6 +53,19 @@ class Project:
     def plan_path(self) -> Path:
         return self.dir / "edit_plan.json"
 
+    @property
+    def memory_path(self) -> Path:
+        return self.dir / "project.md"
+
+    def note(self, text: str, kind: str = "ghi chú") -> None:
+        """Append a timestamped line to project.md — agents read it first so feedback is never lost."""
+        if not self.memory_path.exists():
+            self.memory_path.write_text(
+                f"# Dự án {self.slug}\n\nVideo nguồn: `{Path(self.data['input']).name}`\n\n## Nhật ký\n\n",
+                encoding="utf-8")
+        with open(self.memory_path, "a", encoding="utf-8") as f:
+            f.write(f"- {dt.datetime.now():%Y-%m-%d %H:%M} · **{kind}**: {text.strip()}\n")
+
     def analysis(self) -> dict | None:
         path = self.analysis_dir / "analysis.json"
         return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
@@ -75,6 +89,7 @@ class Project:
         project = cls(dir=target, data={"name": name or video.stem, "input": str(video),
                                         "created": dt.datetime.now().isoformat(timespec="seconds")})
         project.save()
+        project.note("tạo dự án", "hệ thống")
         return project
 
     @classmethod

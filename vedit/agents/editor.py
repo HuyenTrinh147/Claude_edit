@@ -13,6 +13,7 @@ from ..config import Settings
 from ..edl import EditPlan
 from ..knowledge import KnowledgeBase
 from ..media import MediaError, extract_frame, image_block, probe
+from ..media import contact_sheet as sheet
 from ..project import Project
 from ..render import RenderError, RenderResult, render
 from .base import AgentError, AgentRun, run_agent
@@ -78,31 +79,22 @@ def _frames(video: Path, times: list[float], out_dir: Path, width: int = 360, gr
 
 SYSTEM = """Bạn là Agent 3 — Biên tập viên dựng & xuất video trong hệ thống "vedit".
 
-Bạn làm việc trên EditPlan (JSON) của một dự án; bộ render ffmpeg sẽ dựng chính xác theo EditPlan đó.
-Mục tiêu: xuất video hoàn chỉnh, đúng kịch bản, đẹp, không lỗi.
+Bạn làm việc trên EditPlan (JSON) của một dự án; bộ render ffmpeg dựng chính xác theo EditPlan đó. EditPlan đi theo
+một hướng dựng người dùng đã duyệt — giữ đúng tinh thần đó, không tự đổi phong cách.
 
 Quy trình gợi ý:
-1. get_edit_plan để đọc kế hoạch hiện tại. Nếu người dùng có yêu cầu chỉnh sửa, sửa kế hoạch rồi save_edit_plan
-   (gửi TOÀN BỘ kế hoạch; công cụ kiểm tra với media thật và báo lỗi cụ thể để bạn sửa).
-2. render_preview — trả về khung hình mẫu của bản xem trước. Kiểm tra kỹ: chữ có bị cắt/tràn khung, đè lên mặt
-   chủ thể hay nằm trong vùng giao diện app che (12% trên, 22% dưới với video dọc) không; crop có mất chủ thể không;
-   cảnh có đúng nội dung kịch bản không; caption có khớp thời điểm. Dùng inspect_render để xem thêm mốc khác,
-   view_frames để xem video nguồn khi cần chọn lại điểm cắt / focus_x.
-3. Sửa và render_preview lại cho tới khi đạt (thường 1-3 vòng; đừng sửa vụn vặt vô hạn).
-4. render_final để xuất bản chính thức.
+1. get_edit_plan; đọc gu người dùng và nhật ký dự án (trong tin nhắn). Có yêu cầu chỉnh sửa thì sửa kế hoạch rồi
+   save_edit_plan (gửi TOÀN BỘ kế hoạch; công cụ kiểm tra media thật, font, ký tự và báo lỗi cụ thể).
+2. render_preview, rồi contact_sheet + inspect_render ở mọi điểm cắt và lúc mỗi chữ/đồ hoạ xuất hiện: chữ bị cắt/tràn,
+   che chủ thể hoặc tay đang thao tác, nằm ngoài vùng an toàn; crop mất chủ thể; đúng cảnh; nhịp; payoff đáp đúng khung.
+3. Sửa và render_preview lại (1-3 vòng; đừng sửa vụn vặt vô hạn). 4. render_final.
 
-Lớp sáng tạo (đừng chỉ cắt + chữ — dựng như một editor):
-- Chữ động: animation pop/bounce/typewriter/word_pop/slide_up/slide_left/blur_in/wipe; nền sticker shape pill/banner;
-  đặt tự do bằng x/y + rotation; font: Be Vietnam Pro (hiện đại), Mali (viết tay), Pacifico (thư pháp), Inter.
-- graphics: callout (nhãn + đường chỉ đúng vào vật), badge (số bước + nhãn), progress_bar, highlight, sparkles, flash.
-- motion: punch (zoom giật) / shake (rung) trùng tiếng va chạm hoặc beat. look: warm_food, bright_clean, film, moody, vivid, bw
-  (+ vignette, grain). Âm thanh tổng hợp: path 'sfx:pop|click|ding|sparkle|whoosh|thud|rise', role sfx, volume nhỏ.
-- Hook 0-1.5s có chuyển động + chữ sticker; cứ 1.5-3s có một sự kiện thị giác; đồ hoạ cấu trúc thông tin (bước,
-  nguyên liệu, tiến trình); tối đa 2 đồ hoạ cùng lúc, không che chủ thể; mọi hiệu ứng có lý do.
-- Đo vị trí x/y bằng view_frames(grid=true). Chi tiết: kb_read('techniques/bo-cong-cu-do-hoa-hieu-ung-cua-vedit').
+Kỹ thuật: Clip.start/end là giây NGUỒN; texts/captions/graphics/motion/audio là giây TIMELINE — đổi độ dài/thứ tự clip
+thì dời các mốc đó. Đo vị trí bằng view_frames(grid=true) / inspect_render(grid=true). Bảng công cụ (tra cứu, không bắt
+buộc): kb_read('techniques/bo-cong-cu-do-hoa-hieu-ung-cua-vedit').
 
-Ghi nhớ: Clip.start/end tính theo giây NGUỒN; texts/captions/audio theo giây TIMELINE. Khi đổi độ dài/thứ tự clip,
-phải dời mốc texts/captions tương ứng. Kho kiến thức (kb_search) có các kỹ thuật dựng và công thức ffmpeg.
+Luật dựng — luật cứng phải tuân thủ, phần sáng tạo là nguyên tắc:
+{rules}
 
 Kết thúc bằng tóm tắt ngắn: đã chỉnh gì, file xuất ở đâu, độ dài, và gợi ý cải thiện (nếu có)."""
 
@@ -158,6 +150,27 @@ def run_editor(settings: Settings, project: Project, instructions: str | None = 
         return _frames(result.output, times, qa_dir, grid=grid)
 
     @beta_tool
+    def contact_sheet(which: str = "preview", start: float = 0.0, end: float | None = None, count: int = 12) -> list:
+        """Một ảnh ghép nhiều khung hình (có ghi mốc giây) của bản render — xem nhịp và bố cục cả video một lần,
+        hoặc phóng to quanh một điểm cắt bằng start/end.
+
+        Args:
+            which: 'preview' hoặc 'final'.
+            start: Giây bắt đầu trên timeline.
+            end: Giây kết thúc (bỏ trống = hết video).
+            count: Số khung hình (4-24).
+        """
+        result = state.get(which)
+        if result is None:
+            raise ToolError(f"Chưa có bản {which} — gọi render_{which} trước.")
+        out = qa_dir / f"sheet_{which}_{start:06.2f}.jpg"
+        try:
+            path, _ = sheet(result.output, out, start=start, end=end, count=max(4, min(count, 24)))
+        except MediaError as e:
+            raise ToolError(str(e)) from e
+        return [{"type": "text", "text": f"{which} {start:.2f}-{end if end is not None else 'hết'}s"}, image_block(path)]
+
+    @beta_tool
     def render_final() -> str:
         """Xuất video chính thức (độ phân giải đầy đủ, chất lượng theo export của EditPlan) + ảnh thumbnail."""
         try:
@@ -171,7 +184,9 @@ def run_editor(settings: Settings, project: Project, instructions: str | None = 
 
     plan = EditPlan.load(project.plan_path)
     script = load_script(project)
-    parts = [f"Dự án: {project.slug}", "",
+    from .scriptwriter import _context_block, _rules
+
+    parts = [f"Dự án: {project.slug}", "", _context_block(settings, project), "",
              f"Yêu cầu của người dùng: {instructions}" if instructions else
              "Yêu cầu: dựng đúng theo EditPlan hiện có, kiểm tra chất lượng, sửa lỗi nếu thấy, rồi xuất bản chính thức.",
              "", "## EditPlan hiện tại", plan.summary()]
@@ -182,11 +197,13 @@ def run_editor(settings: Settings, project: Project, instructions: str | None = 
     if not export:
         parts += ["", "Chỉ cần làm tới bản preview đạt yêu cầu; KHÔNG gọi render_final."]
 
-    tools = [*plan_tools(project), probe_media, *frame_tools(project), *list_assets_tool(settings),
-             *knowledge_tools(kb, writable=False), render_preview, inspect_render]
+    tools = [*plan_tools(project, font=settings.font, fonts_dir=settings.fonts_dir), probe_media, *frame_tools(project), *list_assets_tool(settings),
+             *knowledge_tools(kb, writable=False), render_preview, inspect_render, contact_sheet]
     if export:
         tools.append(render_final)
-    run = run_agent(settings, label="Agent3·Edit", system=SYSTEM, prompt="\n".join(parts), tools=tools,
+    if instructions:
+        project.note(instructions, "yêu cầu sửa")
+    run = run_agent(settings, label="Agent3·Edit", system=SYSTEM.format(rules=_rules(kb)), prompt="\n".join(parts), tools=tools,
                     effort=settings.effort_edit, max_iterations=40, quiet=quiet)
     if export and state["final"] is None:
         print("[Agent3·Edit] agent chưa xuất bản chính thức — tự render theo edit_plan.json đã lưu", flush=True)

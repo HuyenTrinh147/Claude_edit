@@ -8,6 +8,8 @@ sources:
 ---
 # Bộ công cụ đồ hoạ & hiệu ứng của vedit
 
+**Đây là bảng tra cứu, KHÔNG phải danh sách bắt buộc** — chọn phong cách trước, rồi chỉ lấy những công cụ hợp phong cách đó (xem `techniques/tu-duy-dung-sang-tao-cho-video-ngan`).
+
 Tra cứu nhanh mọi thứ EditPlan làm được ngoài cắt ghép. Toạ độ `x`, `y` là tỉ lệ khung (0..1) — đọc bằng
 `vedit frame <dự án> <giây> --grid` (khung hình có lưới 10% kèm nhãn). Thời gian = giây TIMELINE.
 

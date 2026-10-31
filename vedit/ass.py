@@ -137,6 +137,7 @@ class FontBook:
         self.local: list[FontFace] = []
         self._faces: dict[tuple[str, bool], FontFace | None] = {}
         self._pil_fonts: dict[tuple[str, float], object] = {}
+        self._cmaps: dict[str, set[int]] = {}
         if fonts_dir and Path(fonts_dir).is_dir():
             for path in sorted(Path(fonts_dir).iterdir()):
                 if path.suffix.lower() in (".ttf", ".otf"):
@@ -161,6 +162,29 @@ class FontBook:
         if bold:  # fontconfig resolves a bold request to the nearest weight, heavier on a tie
             return min(candidates, key=lambda f: (abs(f.weight - 700), -f.weight))
         return min(candidates, key=lambda f: (abs(f.weight - 400), f.weight))
+
+    def resolves(self, family: str) -> bool:
+        """True when libass will find this family (bundled in fonts_dir or installed), instead of silently
+        substituting another font."""
+        if any(f.family.lower() == family.lower() for f in self.local):
+            return True
+        if not shutil.which("fc-match"):
+            return True  # cannot tell
+        out = subprocess.run(["fc-match", "-f", "%{family}", family], capture_output=True, text=True).stdout
+        return family.lower() in (name.strip().lower() for name in out.split(","))
+
+    def missing_chars(self, text: str, family: str, bold: bool) -> set[str]:
+        face = self.face(family, bold)
+        if face is None:
+            return set()
+        if face.path not in self._cmaps:
+            try:
+                from fontTools.ttLib import TTFont
+                self._cmaps[face.path] = set(TTFont(face.path, lazy=True, fontNumber=0).getBestCmap() or {})
+            except Exception:
+                self._cmaps[face.path] = set()
+        cmap = self._cmaps[face.path]
+        return {c for c in text if not c.isspace() and cmap and ord(c) not in cmap}
 
     def name(self, family: str, bold: bool) -> str:
         """Font name to put in ASS so libass picks the face we measured."""
@@ -320,9 +344,13 @@ def text_events(texts: list[TextOverlay], W: int, H: int, default_font: str, fon
                 round_rect_path(sw, sh, radius))))
 
         outline, shadow = (0, 0) if has_shape else (t.outline, 2)
+        border_style, outline_color = 1, ass_color(t.outline_color)
+        if t.box and not has_shape:  # libass BorderStyle 3: an opaque box per line, coloured by OutlineColour
+            border_style, outline_color = 3, ass_color(t.box_color, t.box_opacity)
+            outline, shadow = max(fs * 0.22, 6), 0
         styles.append(style_line(
             f"T{i}", font=fonts.name(family, t.bold), size=fs, primary=ass_color(t.color), secondary=ass_color(t.color),
-            outline_color=ass_color(t.outline_color), back=ass_color("#000000", 0.55), bold=t.bold, border_style=1,
+            outline_color=outline_color, back=ass_color("#000000", 0.55), bold=t.bold, border_style=border_style,
             outline=outline, shadow=shadow, align=5, margin_lr=int(W * 0.05), margin_v=0))
         body = _staggered(raw, t.animation) if t.animation in ("typewriter", "word_pop") else ass_text(raw)
         events.append(_ev(6, t.start, t.end, f"T{i}", rf"{{\an5{place}{rot_tag}{tags}}}{body}"))
@@ -366,8 +394,8 @@ def caption_events(caps: Captions, W: int, H: int, default_font: str, fonts: Fon
     for seg in caps.segments:
         text = seg.text.upper() if caps.uppercase else seg.text
         if caps.style != "karaoke":
-            anim = (r"{\fad(60,60)\fscx85\fscy85\t(0,120,\fscx100\fscy100)}" if caps.style == "bold_pop"
-                    else r"{\fad(80,80)}")
+            anim = (r"{\q0\fad(60,60)\fscx85\fscy85\t(0,120,\fscx100\fscy100)}" if caps.style == "bold_pop"
+                    else r"{\q0\fad(80,80)}")
             events.append(_ev(1, seg.start, seg.end, "Cap", anim + ass_text(text)))
             continue
         words = _estimate_words(seg)
@@ -382,7 +410,7 @@ def caption_events(caps: Captions, W: int, H: int, default_font: str, fonts: Fon
             for j, (w, _, _) in enumerate(words):
                 w = ass_text(w)
                 parts.append(rf"{{\c{hl}\fscx110\fscy110}}{w}{{\r}}" if j == k else w)
-            events.append(_ev(1, start, end, "Cap", " ".join(parts)))
+            events.append(_ev(1, start, end, "Cap", r"{\q0}" + " ".join(parts)))
     return [style], events
 
 
@@ -528,6 +556,33 @@ def graphic_events(graphics: list[Graphic], W: int, H: int, font: str, fonts: Fo
         elif g.type == "flash":
             events += _flash(g, W, H)
     return events
+
+
+def check_fonts(plan: EditPlan, font: str, fonts_dir: Path | None = None) -> list[str]:
+    """Problems a render would hide: unknown font families (libass silently swaps in another font) and
+    characters the font lacks (emoji, symbols), which libass draws from a fallback font."""
+    fonts = FontBook(fonts_dir)
+    uses: list[tuple[str, str, bool, str]] = [
+        (f"text #{i}", t.font or font, t.bold, t.text) for i, t in enumerate(plan.texts)]
+    if plan.captions:
+        uses += [(f"caption #{i}", plan.captions.font or font, plan.captions.style != "clean", s.text)
+                 for i, s in enumerate(plan.captions.segments)]
+    uses += [(f"graphic #{i}", g.font or font, True, g.text + g.label)
+             for i, g in enumerate(plan.graphics) if g.text or g.label]
+    problems, unknown = [], set()
+    for where, family, bold, text in uses:
+        if family in unknown:
+            continue
+        if not fonts.resolves(family):
+            unknown.add(family)
+            problems.append(f"{where}: không có font '{family}' — libass sẽ âm thầm thay font khác "
+                            f"(xem assets/fonts/README.md)")
+            continue
+        missing = fonts.missing_chars(text.replace("\\n", ""), family, bold)
+        if missing:
+            problems.append(f"{where}: font '{family}' thiếu ký tự {''.join(sorted(missing))!r} "
+                            "(emoji/ký hiệu sẽ bị vẽ bằng font khác, đơn sắc) — bỏ đi hoặc đổi font")
+    return problems
 
 
 def build_ass(plan: EditPlan, font: str, fonts_dir: Path | None = None) -> str:

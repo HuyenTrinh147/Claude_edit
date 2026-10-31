@@ -1,32 +1,42 @@
 ---
 name: lam-video
-description: Làm trọn một video ngắn từ video của người dùng — tải video vào, phân tích, Agent 2 viết kịch bản theo trend, Agent 3 dựng và xuất, gửi kết quả (và lưu kịch bản lên Google Drive nếu muốn). Dùng khi người dùng đưa video/link kèm mục tiêu và muốn có video hoàn chỉnh.
-argument-hint: <link hoặc đường dẫn video> <mục tiêu, nền tảng, độ dài, phong cách...>
+description: Làm trọn một video ngắn từ video của người dùng — tải video vào, phân tích, Agent 2 đề xuất 2-3 hướng dựng để người dùng CHỌN, rồi viết kịch bản + EditPlan, Agent 3 dựng, agent phản biện soi lỗi, xuất và gửi kết quả. Dùng khi người dùng đưa video/link kèm mục tiêu hoặc ý tưởng và muốn có video hoàn chỉnh.
+argument-hint: <link hoặc đường dẫn video> <mục tiêu / ý tưởng, nền tảng, độ dài...>
 ---
 
 Người dùng muốn làm video: $ARGUMENTS
 
-Bạn là người điều phối hệ thống vedit trong workspace này. Trao đổi bằng tiếng Việt, ngắn gọn; báo tiến độ sau mỗi bước.
+Bạn là người điều phối hệ thống vedit trong workspace này (subagent không gọi được subagent khác, nên bạn chạy từng
+bước). Trao đổi bằng tiếng Việt, ngắn gọn; báo tiến độ sau mỗi bước.
 
 1. **Chuẩn bị**: nếu `command -v vedit` không thấy lệnh, chạy `bash scripts/setup.sh` ở thư mục repo.
 2. **Lấy video**:
-   - Link (Google Drive, YouTube, TikTok, link trực tiếp) → `vedit fetch "<link>"`. Nếu báo bị chặn mạng, nói rõ tên
-     miền bị chặn và hai cách: thêm tên miền vào Allowed domains trong cài đặt môi trường, hoặc tải video lên
-     GitHub vào thư mục `inbox/` của nhánh hiện tại rồi báo lại (khi đó chạy `git pull` và lấy file trong `inbox/`).
-   - File người dùng tải lên trong chat (nằm ở `/root/.claude/uploads/...`) → `vedit fetch "<đường dẫn>"` để chép
-     vào `inbox/`; đổi tên ngắn gọn nếu tên gốc dài.
-   - Đường dẫn file trong workspace → dùng luôn. Không có video → hỏi người dùng (cách dễ nhất: tải file thẳng vào chat).
-3. **Làm rõ yêu cầu** chỉ khi thiếu mục tiêu. Mặc định: TikTok, khoảng 30 giây, tiếng Việt.
-4. **Phân tích**: `vedit analyze "<video>" --name "<tên ngắn>"` → ghi lại slug dự án.
-5. **Agent 2** — gọi Agent tool với `subagent_type: video-scriptwriter`, prompt gồm: slug, đường dẫn video, mục tiêu,
-   nền tảng, độ dài, phong cách/khán giả nếu có, và dặn: phân tích đã chạy, viết `script/script.json` +
-   `edit_plan.json`, chạy `vedit validate <slug>` tới khi hợp lệ, không cần làm bước Google Drive.
-   Sau đó tóm tắt cho người dùng: ý tưởng, hook, các cảnh chính, hashtag.
-6. **Agent 3** — gọi Agent tool với `subagent_type: video-editor`: dự án `<slug>`, dựng theo EditPlan, preview, tự
-   kiểm tra khung hình, sửa lỗi, rồi `vedit render <slug>` xuất bản chính thức.
-7. **Gửi kết quả** bằng SendUserFile: `projects/<slug>/renders/final.mp4`, `final.jpg`, `script/script.md`.
-8. **Google Drive** (khi người dùng muốn, hoặc hỏi một câu nếu chưa rõ): dùng công cụ Google Drive đang kết nối —
-   tìm/tạo thư mục `vedit` ở My Drive, tạo thư mục con tên slug, tạo Google Doc từ nội dung `script.md`
-   (`textContent`, `contentMimeType: text/markdown`) và file `edit_plan.json` (`disableConversionToGoogleType: true`).
-   Video không tải lên Drive qua kết nối này được (quá lớn) — người dùng tải video từ file đã gửi trong chat.
-9. Kết thúc: đường dẫn kết quả, link Drive (nếu có), và gợi ý chỉnh sửa tiếp bằng `/sua-video <slug> <yêu cầu>`.
+   - File người dùng tải lên trong chat (`/root/.claude/uploads/...`) hoặc link (Drive, YouTube, TikTok, link trực tiếp)
+     → `vedit fetch "<đường dẫn/link>"`; đổi tên ngắn gọn nếu tên gốc dài.
+   - Bị chặn mạng: nói rõ tên miền bị chặn và hai cách — thêm tên miền vào Allowed domains trong cài đặt môi trường,
+     hoặc tải video thẳng vào chat. Không có video → hỏi người dùng (cách dễ nhất: tải file thẳng vào chat).
+3. **Phân tích**: `vedit analyze "<video>" --name "<tên ngắn>"` → slug. Ghi yêu cầu nguyên văn:
+   `vedit note <slug> "<lời người dùng>" --kind "yêu cầu"`. Thiếu mục tiêu thì để Agent 2 đề xuất; mặc định TikTok.
+4. **Agent 2 — đề xuất hướng dựng**: Agent tool, `subagent_type: video-scriptwriter`, prompt: làm *Bước 1* cho dự án
+   `<slug>` (video, mục tiêu, nền tảng, độ dài, và **ý tưởng riêng của người dùng nếu có — nguyên văn**).
+5. **Cổng duyệt — bắt buộc, không bỏ qua**: đọc `projects/<slug>/script/concepts.md`, rồi AskUserQuestion:
+   - câu "Bạn chọn hướng dựng nào?": mỗi option = một hướng (label = tên ngắn; description = ý tưởng + phong cách +
+     hook trong 1–2 câu; preview = chuỗi beat, chữ, âm thanh, màu, tính năng còn thiếu nếu có). Người dùng có thể chọn
+     "Other" để mô tả ý của họ;
+   - thêm các câu hỏi mở của Agent 2 (tối đa 3) nếu thật sự cần.
+   Ghi lại: `vedit note <slug> "chọn hướng N — <tên>; ghi chú: ..." --kind "người dùng"`.
+   - Người dùng mô tả ý khác hẳn → chạy lại bước 4 với ý đó.
+   - Hướng được chọn có `new_features` (tính năng vedit chưa có) → nói rõ thiếu gì và hỏi: làm tính năng đó trước
+     (bạn — người điều phối — viết code + test, rồi tiếp tục) hay chọn hướng khác.
+6. **Agent 2 — kịch bản + EditPlan**: `video-scriptwriter`, *Bước 2* với hướng đã chọn + ghi chú của người dùng.
+7. **Agent 3 — dựng bản xem trước**: `video-editor`: dựng `<slug>`, render preview, tự kiểm tra, sửa — CHƯA xuất final.
+8. **Agent phản biện**: `video-critic` trên bản preview. Phán quyết CẦN SỬA → giao danh sách lỗi cho `video-editor`
+   sửa rồi phản biện lại (tối đa 2 vòng). Chưa ĐẠT sau 2 vòng thì nói thật với người dùng điều còn vướng.
+9. **Xuất**: `video-editor` chạy `vedit render <slug>` (bản cũ tự vào `renders/history/`).
+10. **Gửi kết quả** bằng SendUserFile: `renders/final.mp4`, `final.jpg`, `script/concepts.md` (hoặc `script.md`), kèm
+    tóm tắt hướng đã dựng và điểm nhấn; hỏi cảm nhận của người dùng.
+11. **Học từ phản hồi**: khi người dùng khen/chê, ghi nguyên văn `vedit note <slug> "..." --kind "phản hồi"`, cập nhật
+    `profile/gu-nguoi-dung.md` (thích / không thích / bài học), commit + push file hồ sơ.
+12. **Google Drive** (khi người dùng muốn): dùng công cụ Google Drive đang kết nối — tạo thư mục `vedit/<slug>` và Google
+    Doc từ nội dung `script.md` / `concepts.md` (`textContent`, `contentMimeType: text/markdown`). Video quá lớn để tải
+    qua kết nối này — người dùng tải từ file đã gửi trong chat.

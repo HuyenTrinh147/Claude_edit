@@ -68,6 +68,70 @@ class ScriptDoc(_Model):
     sources: list[str] = Field(default_factory=list, description="URL tham khảo đã đọc")
 
 
+class Concept(_Model):
+    name: str = Field(description="Tên ngắn của hướng dựng")
+    idea: str = Field(description="Ý tưởng 1-2 câu: video này là gì, người xem cảm thấy gì")
+    style: str = Field(description="Phong cách tham chiếu (silent vlog/ASMR, velocity, Hormozi, cinematic, game HUD/AR...)")
+    hook: str = Field(description="0-2 giây đầu: hình, chữ, âm thanh")
+    beats: list[str] = Field(min_length=2, description="Chuỗi beat kèm mốc giây NGUỒN, vd '20.5-21.6s hũ thành phẩm (hook)'")
+    pacing: str = Field(description="Nhịp: độ dài cảnh, chỗ dồn, chỗ thở, speed ramp / dừng hình")
+    typography: str = Field(description="Font (từ thư viện assets/fonts), màu, kiểu chữ, lượng chữ")
+    signature_moves: list[str] = Field(min_length=2, max_length=6, description="3-5 chiêu chữ ký của phong cách")
+    audio: str = Field(description="Tiếng gốc / nhạc / SFX (ghi ngân sách SFX)")
+    color: str = Field(description="Màu / look")
+    duration: float = Field(gt=0, description="Độ dài dự kiến (giây)")
+    why: str = Field(description="Vì sao hợp mục tiêu và gu người dùng")
+    risks: str = Field("", description="Rủi ro / điều người dùng cần quyết")
+    new_features: list[str] = Field(default_factory=list, description="Tính năng vedit còn thiếu mà hướng này cần")
+
+
+class ConceptSet(_Model):
+    understanding: str = Field(description="Agent hiểu video thế nào: nội dung, khoảnh khắc mạnh, âm thanh, điểm yếu")
+    questions: list[str] = Field(default_factory=list, max_length=3, description="Câu hỏi còn mở cho người dùng")
+    concepts: list[Concept] = Field(min_length=2, max_length=3, description="2-3 hướng dựng KHÁC HẲN nhau")
+
+
+def concepts_markdown(cs: ConceptSet, project: Project) -> str:
+    lines = [f"# Hướng dựng đề xuất — {project.slug}", "", "## Agent hiểu video thế nào", "", cs.understanding, ""]
+    for k, c in enumerate(cs.concepts, start=1):
+        lines += [
+            f"## {k}. {c.name}", "", f"**Ý tưởng:** {c.idea}", "",
+            f"- **Phong cách:** {c.style}", f"- **Hook (0–2s):** {c.hook}", f"- **Nhịp:** {c.pacing}",
+            f"- **Chữ:** {c.typography}", f"- **Âm thanh:** {c.audio}", f"- **Màu:** {c.color}",
+            f"- **Độ dài:** ~{c.duration:g}s", "", "**Chuỗi beat:**", *[f"{i}. {b}" for i, b in enumerate(c.beats, 1)], "",
+            "**Chiêu chữ ký:** " + " · ".join(c.signature_moves), "", f"**Vì sao hợp:** {c.why}",
+        ]
+        if c.risks:
+            lines.append(f"**Cần lưu ý:** {c.risks}")
+        if c.new_features:
+            lines.append("**Cần thêm tính năng:** " + "; ".join(c.new_features))
+        lines.append("")
+    if cs.questions:
+        lines += ["## Câu hỏi cho bạn", "", *[f"- {q}" for q in cs.questions], ""]
+    return "\n".join(lines)
+
+
+def load_concepts(project: Project) -> ConceptSet | None:
+    path = project.script_dir / "concepts.json"
+    return ConceptSet.model_validate_json(path.read_text(encoding="utf-8")) if path.exists() else None
+
+
+def _context_block(settings: Settings, project: Project) -> str:
+    """User taste profile + project memory: read before proposing or building anything."""
+    parts = []
+    if settings.profile_path.exists():
+        parts.append("## Gu & phản hồi của người dùng (profile/gu-nguoi-dung.md)\n"
+                     + settings.profile_path.read_text(encoding="utf-8"))
+    if project.memory_path.exists():
+        parts.append("## Nhật ký dự án (project.md)\n" + project.memory_path.read_text(encoding="utf-8"))
+    return "\n\n".join(parts)
+
+
+def _rules(kb: KnowledgeBase) -> str:
+    note = kb.get("techniques/tu-duy-dung-sang-tao-cho-video-ngan")
+    return note.body if note else ""
+
+
 def _cell(text: str) -> str:
     return " ".join(str(text).split()).replace("|", "\\|") or "—"
 
@@ -128,45 +192,117 @@ def analysis_brief(analysis: dict, max_transcript_chars: int = 30000) -> str:
     return "\n".join(lines)
 
 
+SYSTEM_CONCEPTS = """Bạn là Agent 2 — Chiến lược gia nội dung & biên kịch video ngắn trong hệ thống "vedit".
+
+Nhiệm vụ lúc này: ĐỀ XUẤT HƯỚNG DỰNG để người dùng chọn — chưa viết kịch bản, chưa viết EditPlan.
+
+1. Hiểu video thật kỹ: nội dung, khoảnh khắc mạnh (mốc giây nguồn), âm thanh, điểm yếu. Dùng view_frames khi cần.
+2. Đọc gu & phản hồi cũ của người dùng (trong tin nhắn) — tránh lặp lại thứ họ đã chê.
+3. Tìm hiểu xu hướng THỰC TẾ, gần đây (web_search, kho kiến thức kb_search/kb_read). Chỉ nêu điều có bằng chứng.
+4. Gọi save_concepts với 2-3 hướng dựng KHÁC HẲN nhau về phong cách và cấu trúc (không phải 3 biến thể của một ý):
+   thường 1 hướng an toàn bám mục tiêu, 1-2 hướng táo bạo. Nếu người dùng đã nêu ý tưởng riêng, ít nhất một hướng
+   phải phát triển đúng ý tưởng đó. Mỗi hướng dùng 3-5 chiêu chữ ký của phong cách đó, chỉ dùng cảnh có thật,
+   ghi rõ tính năng vedit còn thiếu nếu hướng đó cần (đối chiếu kb 'techniques/ban-do-nang-luc-dung-vedit-da-co-va-con-thieu').
+5. Kết thúc bằng 2-4 câu tóm tắt — người điều phối sẽ đưa các hướng cho người dùng chọn."""
+
+
 SYSTEM = """Bạn là Agent 2 — Chiến lược gia nội dung & biên kịch video ngắn trong hệ thống "vedit".
 
-Đầu vào: video gốc của người dùng (đã được phân tích: cảnh, khoảng lặng, transcript, khung hình đại diện) và
-mục tiêu của họ. Đầu ra: (1) kịch bản video ngắn bám theo xu hướng hiện tại, (2) EditPlan để Agent 3 dựng bằng ffmpeg.
+Người dùng ĐÃ CHỌN một hướng dựng (trong tin nhắn, kèm ghi chú của họ). Nhiệm vụ: biến hướng đó thành (1) kịch bản
+chi tiết và (2) EditPlan để Agent 3 dựng bằng ffmpeg — trung thành với hướng đã duyệt, không tự đổi phong cách.
 
 Quy trình gợi ý:
-1. Hiểu video: nội dung, chủ thể, điểm mạnh/khoảnh khắc đắt giá. Dùng view_frames khi cần nhìn kỹ một mốc thời gian.
-2. Nghiên cứu xu hướng THỰC TẾ, gần đây cho đúng nền tảng, ngách nội dung và thị trường (mặc định Việt Nam): format
-   đang hot, cách mở đầu, âm thanh trend, hashtag/từ khoá người dùng đang tìm. Dùng web_search/web_fetch,
-   youtube_search, tiktok_video. Tham khảo kho kiến thức (kb_search/kb_read) — kiến thức do Agent 1 tích luỹ.
-   Chỉ nêu xu hướng có bằng chứng; ghi nguồn. Không bịa số liệu.
-3. Lên ý tưởng + kịch bản: hook mạnh trong 1-3 giây đầu, nhịp nhanh, mỗi cảnh có lý do tồn tại, kết bằng CTA.
-   Chỉ dùng cảnh có thật trong video nguồn (và tài nguyên từ list_assets nếu có).
-4. Gọi save_script với kịch bản hoàn chỉnh.
-5. Gọi save_edit_plan với EditPlan khớp kịch bản. Công cụ sẽ kiểm tra với media thật; nếu báo lỗi thì sửa và gọi lại.
+1. Đọc lại hướng đã duyệt, gu người dùng và nhật ký dự án (trong tin nhắn). Xem khung hình khi cần chọn điểm cắt.
+2. Bổ sung nghiên cứu nếu cần (hashtag, từ khoá, âm thanh trend) — chỉ nêu điều có bằng chứng, ghi nguồn.
+3. Gọi save_script với kịch bản hoàn chỉnh, rồi save_edit_plan với EditPlan khớp kịch bản (công cụ kiểm tra với media
+   thật và font; báo lỗi thì sửa và gọi lại).
 
-Quy tắc EditPlan:
-- Video gốc là source "main". Clip.start/end là giây trong file NGUỒN; texts/captions/audio dùng giây trên TIMELINE
-  video xuất (mỗi clip chiếm (end-start)/speed giây; transition làm chồng lấn 2 clip kề nhau).
-- canvas theo nền tảng được giao. Video ngang đưa sang khung dọc: fit "cover" + focus_x vào chủ thể, hoặc "blur".
-- Cắt bỏ khoảng lặng/đoạn thừa; clip thường 0.8-4 giây cho video ngắn; transition dùng tiết chế (cắt thẳng là mặc định).
-- Chữ trên màn hình tiếng Việt có dấu, ngắn (≤ 7 từ/dòng). Vùng an toàn dọc: tránh 12% trên và 22% dưới
-  (giao diện app che) — dùng position "upper"/"center"/"lower", không dùng "bottom" cho chữ quan trọng.
-- Nếu có transcript: tạo captions với mốc timeline đã quy đổi theo các đoạn cắt (bỏ phần nằm trong đoạn bị cắt),
-  mỗi đoạn caption 2-6 từ. Không có transcript thì bỏ captions.
-- Chỉ thêm track audio khi có file thật (từ list_assets). Nhạc nền volume 0.12-0.3, duck=true khi có lời nói.
-- Đặt export.thumbnail_at vào khung hình hấp dẫn nhất.
+Kỹ thuật EditPlan:
+- Video gốc là source "main". Clip.start/end là giây NGUỒN; texts/captions/graphics/motion/audio là giây TIMELINE
+  (mỗi clip chiếm (end-start)/speed giây; transition làm 2 clip kề nhau chồng lấn).
+- canvas theo nền tảng. Video ngang sang khung dọc: fit "cover" + focus_x vào chủ thể, hoặc "blur".
+- Có transcript: captions với mốc đã quy đổi theo đoạn cắt. Âm thanh: file thật (list_assets) hoặc 'sfx:<tên>'.
+- Đo vị trí x/y cho chữ & đồ hoạ bằng view_frames(grid=true). Đặt export.thumbnail_at vào khung hình đẹp nhất.
+- Bảng công cụ (tra cứu, không bắt buộc): kb_read('techniques/bo-cong-cu-do-hoa-hieu-ung-cua-vedit').
 
-Lớp sáng tạo (đừng chỉ cắt + chữ — dựng như một editor):
-- Chữ động: animation pop/bounce/typewriter/word_pop/slide_up/slide_left/blur_in/wipe; nền sticker shape pill/banner;
-  đặt tự do bằng x/y + rotation; font: Be Vietnam Pro (hiện đại), Mali (viết tay), Pacifico (thư pháp), Inter.
-- graphics: callout (nhãn + đường chỉ đúng vào vật), badge (số bước + nhãn), progress_bar, highlight, sparkles, flash.
-- motion: punch (zoom giật) / shake (rung) trùng tiếng va chạm hoặc beat. look: warm_food, bright_clean, film, moody, vivid, bw
-  (+ vignette, grain). Âm thanh tổng hợp: path 'sfx:pop|click|ding|sparkle|whoosh|thud|rise', role sfx, volume nhỏ.
-- Hook 0-1.5s có chuyển động + chữ sticker; cứ 1.5-3s có một sự kiện thị giác; đồ hoạ cấu trúc thông tin (bước,
-  nguyên liệu, tiến trình); tối đa 2 đồ hoạ cùng lúc, không che chủ thể; mọi hiệu ứng có lý do.
-- Đo vị trí x/y bằng view_frames(grid=true). Chi tiết: kb_read('techniques/bo-cong-cu-do-hoa-hieu-ung-cua-vedit').
+Luật dựng — luật cứng phải tuân thủ, phần sáng tạo là nguyên tắc:
+{rules}
 
-Cuối cùng, tóm tắt ngắn gọn cho người dùng: ý tưởng, hook, độ dài, và điểm cần họ quyết định (nếu có)."""
+Cuối cùng, tóm tắt ngắn: hướng đã dựng theo, hook, độ dài, và điều người dùng nên xem kỹ."""
+
+
+def _brief(settings: Settings, project: Project, analysis: dict, kb: KnowledgeBase, *, goal: str, platform: str,
+           duration: float, style: str | None, audience: str | None, extra: list[str]) -> list[dict]:
+    width, height = CANVAS_PRESETS.get(platform, CANVAS_PRESETS["tiktok"])
+    lines = [
+        f"Hôm nay là {dt.date.today().isoformat()}.",
+        f"Mục tiêu của người dùng: {goal}",
+        f"Nền tảng: {PLATFORMS.get(platform, platform)} → canvas {width}x{height}.",
+        f"Độ dài mong muốn: khoảng {duration:g} giây.",
+        f"Ngôn ngữ: {settings.lang}.",
+    ]
+    if style:
+        lines.append(f"Phong cách mong muốn: {style}")
+    if audience:
+        lines.append(f"Khán giả mục tiêu: {audience}")
+    lines += extra
+    text = ("\n".join(lines) + "\n\n" + _context_block(settings, project) + "\n\n## Phân tích video\n"
+            + analysis_brief(analysis) + "\n\n## Kho kiến thức hiện có\n" + kb.overview()
+            + "\n\n## Khung hình đại diện (mốc giây nguồn)")
+    content: list[dict] = [{"type": "text", "text": text}]
+    for frame in analysis["frames"]:
+        path = project.analysis_dir / frame["file"]
+        if path.exists():
+            content += [{"type": "text", "text": f"t={frame['time']:.2f}s"}, image_block(path)]
+    return content
+
+
+def run_concepts(
+    settings: Settings,
+    project: Project,
+    *,
+    goal: str,
+    platform: str = "tiktok",
+    duration: float = 30,
+    style: str | None = None,
+    audience: str | None = None,
+    idea: str | None = None,
+    quiet: bool = False,
+) -> ConceptSet:
+    """Phase 1: propose 2-3 contrasting concepts for the user to choose from (no script, no EditPlan yet)."""
+    analysis = project.analysis()
+    if analysis is None:
+        raise AgentError("Dự án chưa được phân tích — chạy 'vedit analyze' trước.")
+    kb = KnowledgeBase(settings.knowledge_dir)
+    saved: dict[str, ConceptSet] = {}
+
+    def save_concepts(**data) -> str:
+        """Lưu 2-3 hướng dựng đề xuất (concepts.json + concepts.md) để người dùng chọn."""
+        try:
+            cs = ConceptSet.model_validate(data)
+        except ValidationError as e:
+            raise ToolError("Hướng dựng chưa hợp lệ, sửa rồi gọi lại:\n" + format_validation_error(e)) from e
+        project.script_dir.mkdir(parents=True, exist_ok=True)
+        (project.script_dir / "concepts.json").write_text(cs.model_dump_json(indent=2), encoding="utf-8")
+        (project.script_dir / "concepts.md").write_text(concepts_markdown(cs, project), encoding="utf-8")
+        saved["concepts"] = cs
+        return f"Đã lưu {len(cs.concepts)} hướng dựng vào script/concepts.md."
+
+    extra = [f"Ý tưởng riêng của người dùng (phải có một hướng phát triển đúng ý này): {idea}"] if idea else []
+    content = _brief(settings, project, analysis, kb, goal=goal, platform=platform, duration=duration, style=style,
+                     audience=audience, extra=extra)
+    tools = [*web_tools(max_searches=8, max_fetches=6), *knowledge_tools(kb, writable=False), *frame_tools(project),
+             *list_assets_tool(settings), beta_tool(save_concepts, input_schema=ConceptSet.model_json_schema())]
+    project.data["brief"] = {"goal": goal, "platform": platform, "duration": duration, "style": style,
+                             "audience": audience, "idea": idea}
+    project.save()
+    run_agent(settings, label="Agent2·Concepts", system=SYSTEM_CONCEPTS, prompt=content, tools=tools,
+              effort=settings.effort_script, max_iterations=40, quiet=quiet)
+    if "concepts" not in saved:
+        raise AgentError("Agent 2 kết thúc nhưng chưa lưu hướng dựng. Chạy lại 'vedit concepts'.")
+    project.note(f"đề xuất {len(saved['concepts'].concepts)} hướng dựng: "
+                 + " | ".join(c.name for c in saved["concepts"].concepts), "Agent 2")
+    return saved["concepts"]
 
 
 def run_scriptwriter(
@@ -178,12 +314,14 @@ def run_scriptwriter(
     duration: float = 30,
     style: str | None = None,
     audience: str | None = None,
+    concept: Concept | None = None,
+    notes: str | None = None,
     quiet: bool = False,
 ) -> AgentRun:
+    """Phase 2: script + EditPlan for the concept the user approved."""
     analysis = project.analysis()
     if analysis is None:
         raise AgentError("Dự án chưa được phân tích — chạy 'vedit analyze' trước.")
-    width, height = CANVAS_PRESETS.get(platform, CANVAS_PRESETS["tiktok"])
     kb = KnowledgeBase(settings.knowledge_dir)
     saved: dict[str, bool] = {"script": False, "plan": False}
 
@@ -202,33 +340,22 @@ def run_scriptwriter(
     def on_plan_saved(_plan) -> None:
         saved["plan"] = True
 
-    brief = [
-        f"Hôm nay là {dt.date.today().isoformat()}.",
-        f"Mục tiêu của người dùng: {goal}",
-        f"Nền tảng: {PLATFORMS.get(platform, platform)} → canvas {width}x{height}.",
-        f"Độ dài mong muốn: khoảng {duration:g} giây.",
-        f"Ngôn ngữ: {settings.lang}.",
-    ]
-    if style:
-        brief.append(f"Phong cách mong muốn: {style}")
-    if audience:
-        brief.append(f"Khán giả mục tiêu: {audience}")
-    content: list[dict] = [{"type": "text", "text": "\n".join(brief) + "\n\n## Phân tích video\n"
-                            + analysis_brief(analysis) + "\n\n## Kho kiến thức hiện có\n" + kb.overview()
-                            + "\n\n## Khung hình đại diện (mốc giây nguồn)"}]
-    for frame in analysis["frames"]:
-        path = project.analysis_dir / frame["file"]
-        if path.exists():
-            content += [{"type": "text", "text": f"t={frame['time']:.2f}s"}, image_block(path)]
+    extra = []
+    if concept:
+        extra.append("## Hướng dựng người dùng ĐÃ DUYỆT\n" + concept.model_dump_json(indent=1))
+    if notes:
+        extra.append(f"Ghi chú thêm của người dùng: {notes}")
+    content = _brief(settings, project, analysis, kb, goal=goal, platform=platform, duration=duration, style=style,
+                     audience=audience, extra=extra)
 
     tools = [*web_tools(max_searches=12, max_fetches=10), *research_tools(settings), *knowledge_tools(kb, writable=False),
              *list_assets_tool(settings), *frame_tools(project),
              beta_tool(save_script, input_schema=ScriptDoc.model_json_schema()),
-             *plan_tools(project, on_save=on_plan_saved)]
+             *plan_tools(project, on_save=on_plan_saved, font=settings.font, fonts_dir=settings.fonts_dir)]
     project.data["brief"] = {"goal": goal, "platform": platform, "duration": duration, "style": style,
                              "audience": audience}
     project.save()
-    run = run_agent(settings, label="Agent2·Script", system=SYSTEM, prompt=content, tools=tools,
+    run = run_agent(settings, label="Agent2·Script", system=SYSTEM.format(rules=_rules(kb)), prompt=content, tools=tools,
                     effort=settings.effort_script, max_iterations=60, quiet=quiet)
     missing = [k for k, ok in saved.items() if not ok]
     if missing:

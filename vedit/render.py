@@ -10,6 +10,7 @@ import re
 import subprocess
 import time
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Callable
 
@@ -98,24 +99,40 @@ def look_filters(plan: EditPlan) -> list[str]:
     return filters
 
 
+# HLG/PQ (iPhone HDR) -> SDR BT.709; without it HDR footage comes out grey or blown out
+HDR_TO_SDR = ("zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,"
+              "zscale=t=bt709:m=bt709:r=tv,format=yuv420p")
+AUDIO_EDGE_FADE = 0.025  # seconds; hides the click of a hard audio cut
+
+
+def camera(zoom: str, dx: str = "0", dy: str = "0") -> str:
+    """Zoom / pan by resampling the window (W/zoom x H/zoom, centred at W/2+dx, H/2+dy) onto the full frame.
+    `perspective` samples at sub-pixel positions; zoompan rounds its window to whole pixels, which makes slow
+    moves stall and step backwards. Expressions may use `in` (frame number), W and H."""
+    hw, hh = f"W/2/({zoom})", f"H/2/({zoom})"
+    x0, x1 = f"W/2+({dx})-{hw}", f"W/2+({dx})+{hw}"
+    y0, y1 = f"H/2+({dy})-{hh}", f"H/2+({dy})+{hh}"
+    return (f"perspective=x0='{x0}':y0='{y0}':x1='{x1}':y1='{y0}':x2='{x0}':y2='{y1}':x3='{x1}':y3='{y1}'"
+            ":interpolation=cubic:eval=frame")
+
+
 def motion_filter(plan: EditPlan, fps: int, W: int, H: int) -> str | None:
-    """One zoompan over the whole timeline: punch = fast zoom-in that eases back out, shake = decaying jitter."""
+    """Camera moves on the joined timeline: punch = fast zoom-in that eases back out, shake = decaying jitter."""
     if not plan.motion:
         return None
-    z, x, y = ["1"], ["iw/2-(iw/zoom/2)"], ["ih/2-(ih/zoom/2)"]
+    z, x, y = ["1"], ["0"], ["0"]
     for m in plan.motion:
         a, d = round(m.start * fps), max(2, round(m.duration * fps))
-        win, p = f"between(on,{a},{a + d})", f"((on-{a})/{d})"
+        win, p = f"between(in,{a},{a + d})", f"((in-{a})/{d})"
         if m.type == "punch":
             env = f"if(lt({p},0.2),sin(PI/2*{p}/0.2),cos(PI/2*({p}-0.2)/0.8))"
             z.append(f"{m.amount:g}*if({win},{env},0)")
         else:
             decay = f"(1-{p})"
             z.append(f"{2.2 * m.amount:g}*if({win},{decay},0)")
-            x.append(f"{m.amount:g}*iw*if({win},sin((on-{a})*2.4)*{decay},0)")
-            y.append(f"{m.amount:g}*ih*if({win},cos((on-{a})*3.1)*{decay},0)")
-    return (f"zoompan=z='{'+'.join(z)}':x='{'+'.join(x)}':y='{'+'.join(y)}'"
-            f":d=1:s={W}x{H}:fps={fps}")
+            x.append(f"{m.amount:g}*W*if({win},sin((in-{a})*2.4)*{decay},0)")
+            y.append(f"{m.amount:g}*H*if({win},cos((in-{a})*3.1)*{decay},0)")
+    return camera("+".join(z), "+".join(x), "+".join(y))
 
 
 def frame_layout(plan: EditPlan, fps: int) -> tuple[list[int], list[int], int]:
@@ -174,9 +191,10 @@ def build_command(
         return n_inputs - 1
 
     # 1) per-clip video + audio chains -> [v{i}] [a{i}]
+    any_audio = False
     for i, clip in enumerate(plan.clips):
         n = clip_frames[i]
-        has_audio = False
+        has_audio = hdr = False
         if clip.is_color:
             color = clip.source.split(":", 1)[1].lstrip("#")
             idx = add_input("-f", "lavfi", "-i", f"color=c=0x{color}:s={W}x{H}:r={fps}:d={_num(clip.source_duration)}")
@@ -188,8 +206,10 @@ def build_command(
             else:
                 idx = add_input("-ss", _num(clip.start), "-t", _num(clip.source_duration), "-i", str(path))
                 has_audio = info.has_audio and not clip.mute and clip.volume > 0
+                hdr = info.is_hdr
+        any_audio |= has_audio
 
-        pre = f"[{idx}:v]setpts=(PTS-STARTPTS)/{clip.speed:g},fps={fps}"
+        pre = f"[{idx}:v]setpts=(PTS-STARTPTS)/{clip.speed:g},fps={fps}" + (f",{HDR_TO_SDR}" if hdr else "")
         if clip.fit == "blur":
             bw, bh = _even(W / 4), _even(H / 4)
             graph.append(f"{pre},split=2[c{i}a][c{i}b]")
@@ -208,8 +228,7 @@ def build_command(
         post = []
         if clip.zoom != "none":
             a = clip.zoom_amount
-            z = f"1+{a:g}*on/{n}" if clip.zoom == "in" else f"1+{a:g}-{a:g}*on/{n}"
-            post.append(f"zoompan=z='{z}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s={W}x{H}:fps={fps}")
+            post.append(camera(f"1+{a:g}*in/{n}" if clip.zoom == "in" else f"1+{a:g}-{a:g}*in/{n}"))
         post += ["setsar=1", "format=yuv420p", "tpad=stop_mode=clone:stop_duration=1",
                  f"trim=end_frame={n}", "setpts=PTS-STARTPTS", f"settb=1/{fps}"]
         graph.append(f"[c{i}]{','.join(post)}[v{i}]")
@@ -217,6 +236,9 @@ def build_command(
         if has_audio:
             achain = ["asetpts=PTS-STARTPTS", *_atempo_chain(clip.speed), f"volume={clip.volume:g}", AUDIO_FMT,
                       "apad", f"atrim=end_sample={samples(n)}", "asetpts=PTS-STARTPTS"]
+            if n / fps > 4 * AUDIO_EDGE_FADE:
+                achain += [f"afade=t=in:d={AUDIO_EDGE_FADE}",
+                           f"afade=t=out:st={n / fps - AUDIO_EDGE_FADE:.6f}:d={AUDIO_EDGE_FADE}"]
             graph.append(f"[{idx}:a]{','.join(achain)}[a{i}]")
         else:
             graph.append(f"anullsrc=r={SAMPLE_RATE}:cl=stereo,atrim=end_sample={samples(n)},{AUDIO_FMT}[a{i}]")
@@ -290,6 +312,7 @@ def build_command(
                 chain.append(f"adelay=delays={int(track.start * 1000)}:all=1")
             graph.append(f"{','.join(chain)}[t{k}]")
             voice_tracks.append(k)
+            any_audio = True
             continue
         dur = track.duration or max(total - track.start, 0.1)
         args = ["-stream_loop", "-1"] if track.loop and track.role == "music" else []
@@ -303,6 +326,7 @@ def build_command(
             chain.append(f"adelay=delays={int(track.start * 1000)}:all=1")
         graph.append(f"[{idx}:a]{','.join(chain)}[t{k}]")
         (music_tracks if track.role == "music" else voice_tracks).append(k)
+        any_audio = True
 
     voice = cur_a
     if voice_tracks:
@@ -324,7 +348,7 @@ def build_command(
         graph.append(f"[{voice}][{music}]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[mixed]")
         mixed = "mixed"
     final_audio = []
-    if plan.export.normalize_audio:
+    if plan.export.normalize_audio and any_audio:  # loudnorm on pure digital silence outputs NaN
         final_audio += ["loudnorm=I=-14:TP=-1.5:LRA=11", AUDIO_FMT]
     final_audio += [f"atrim=end_sample={samples(total_frames)}"]
     graph.append(f"[{mixed}]{','.join(final_audio)}[aout]")
@@ -344,6 +368,21 @@ def build_command(
     ]
 
 
+def archive_previous(output: Path) -> Path | None:
+    """Move an earlier export (video, thumbnail, plan snapshot) into history/ instead of overwriting it, so
+    every version the user has seen can be compared or restored."""
+    if not output.exists():
+        return None
+    stamp = datetime.fromtimestamp(output.stat().st_mtime).strftime("%Y%m%d-%H%M%S")
+    history = output.parent / "history"
+    history.mkdir(exist_ok=True)
+    for f in (output, output.with_suffix(".jpg"), output.with_suffix(".plan.json")):
+        if f.exists():
+            suffix = ".plan.json" if f.name.endswith(".plan.json") else f.suffix
+            f.replace(history / f"{output.stem}_{stamp}{suffix}")
+    return history
+
+
 def render(
     plan: EditPlan,
     output: Path,
@@ -360,7 +399,8 @@ def render(
     output.parent.mkdir(parents=True, exist_ok=True)
     work_dir = (work_dir or output.parent / ".work").resolve()
     work_dir.mkdir(parents=True, exist_ok=True)
-    cmd = build_command(plan, output, base_dir=Path(base_dir).resolve(), work_dir=work_dir, preview=preview,
+    rendering = output.with_name(f".{output.stem}.rendering{output.suffix}")  # keep the old file until done
+    cmd = build_command(plan, rendering, base_dir=Path(base_dir).resolve(), work_dir=work_dir, preview=preview,
                         font=font, fonts_dir=fonts_dir)
     (work_dir / ("preview_cmd.txt" if preview else "render_cmd.txt")).write_text(
         "\n".join(cmd), encoding="utf-8")
@@ -379,11 +419,17 @@ def render(
                     pass
         proc.wait()
     if proc.returncode != 0:
+        rendering.unlink(missing_ok=True)
         tail = "\n".join(stderr_path.read_text(encoding="utf-8", errors="replace").strip().splitlines()[-30:])
         raise RenderError(f"ffmpeg lỗi (mã {proc.returncode}). Log: {stderr_path}\n{tail}")
 
+    if not preview:
+        archive_previous(output)
+    rendering.replace(output)
     thumbnail = None
     if not preview:
+        output.with_suffix(".plan.json").write_text(plan.model_dump_json(indent=2, exclude_none=True),
+                                                    encoding="utf-8")
         t = plan.export.thumbnail_at if plan.export.thumbnail_at is not None else min(1.0, total / 2)
         thumbnail = extract_frame(output, min(t, max(total - 0.1, 0)), output.with_suffix(".jpg"),
                                   width=plan.canvas.width)

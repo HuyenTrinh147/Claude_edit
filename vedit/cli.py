@@ -53,15 +53,29 @@ def cmd_analyze(args, settings) -> None:
           f"transcript: {'có' if analysis['transcript'] else 'không'}\n  {project.analysis_dir / 'analysis.json'}")
 
 
-def cmd_script(args, settings) -> None:
-    from .agents.scriptwriter import run_scriptwriter
+def cmd_concepts(args, settings) -> None:
+    from .agents.scriptwriter import run_concepts
     from .pipeline import analyze
 
     project = _project_or_new(settings, args.target, args.name)
     print(f"■ Dự án: {project.dir}")
     analyze(settings, project, transcript=args.transcript)
+    concepts = run_concepts(settings, project, goal=args.goal, platform=args.platform, duration=args.duration,
+                            style=args.style, audience=args.audience, idea=args.idea)
+    print("\n" + (project.script_dir / "concepts.md").read_text(encoding="utf-8"))
+    print(f"Bước tiếp: vedit script {project.slug} --goal \"...\" --concept <1-{len(concepts.concepts)}> [--notes '...']")
+
+
+def cmd_script(args, settings) -> None:
+    from .agents.scriptwriter import run_scriptwriter
+    from .pipeline import analyze, choose_concept
+
+    project = _project_or_new(settings, args.target, args.name)
+    print(f"■ Dự án: {project.dir}")
+    analyze(settings, project, transcript=args.transcript)
+    chosen, notes = choose_concept(project, args.concept, args.notes)
     run = run_scriptwriter(settings, project, goal=args.goal, platform=args.platform, duration=args.duration,
-                           style=args.style, audience=args.audience)
+                           style=args.style, audience=args.audience, concept=chosen, notes=notes)
     print("\n" + run.text)
     print(f"\nKịch bản: {project.script_dir / 'script.md'}\nEditPlan: {project.plan_path}")
     if args.drive:
@@ -103,9 +117,11 @@ def _load_plan(settings, target_ref: str):
         plan = EditPlan.load(plan_path)
     except ValidationError as e:
         raise SystemExit(f"{plan_path} không hợp lệ:\n" + format_validation_error(e)) from None
-    problems = validate_against_media(plan, base_dir, probe)
+    from .ass import check_fonts
+
+    problems = validate_against_media(plan, base_dir, probe) + check_fonts(plan, settings.font, settings.fonts_dir)
     if problems:
-        raise SystemExit(f"{plan_path} không khớp media:\n- " + "\n- ".join(problems))
+        raise SystemExit(f"{plan_path} có lỗi:\n- " + "\n- ".join(problems))
     return plan, base_dir, renders
 
 
@@ -130,34 +146,81 @@ def cmd_frame(args, settings) -> None:
         print(extract_frame(video, t, out, width=args.width, grid=args.grid))
 
 
-def cmd_validate(args, settings) -> None:
-    """Validate edit_plan.json and, for a project, script/script.json (regenerating script.md from it)."""
-    from pydantic import ValidationError
-
-    from .agents.scriptwriter import ScriptDoc, script_markdown
-    from .agents.tools import format_validation_error
+def cmd_sheet(args, settings) -> None:
+    from .media import contact_sheet
     from .project import Project
 
-    plan, base_dir, _ = _load_plan(settings, args.target)
-    print(plan.summary() + "\n✓ EditPlan hợp lệ")
-    script_json = base_dir / "script" / "script.json"
-    if script_json.exists() and (base_dir / "project.json").exists():
+    target = Path(args.target).expanduser()
+    if target.is_file():
+        video, out_dir = target, settings.root / "inbox" / "frames"
+    else:
+        project = Project.open(settings, args.target)
+        video = project.input_path if args.source == "source" else project.renders_dir / (
+            "preview.mp4" if args.source == "preview" else "final.mp4")
+        out_dir = project.analysis_dir / "frames"
+    if not video.exists():
+        raise SystemExit(f"Không có {video} — render trước đã")
+    span = f"{args.start:06.2f}-{args.end:06.2f}" if args.end is not None else f"{args.start:06.2f}-het"
+    out = Path(args.out) if args.out else out_dir / f"sheet_{args.source}_{span}.jpg"
+    path, times = contact_sheet(video, out, start=args.start, end=args.end, count=args.count, cols=args.cols,
+                                width=args.width)
+    print(f"{path}\n  mốc: {', '.join(f'{t:.2f}' for t in times)}")
+
+
+def cmd_note(args, settings) -> None:
+    from .project import Project
+
+    project = Project.open(settings, args.project)
+    project.note(" ".join(args.text), args.kind)
+    print(f"✓ Đã ghi vào {project.memory_path}")
+
+
+def cmd_validate(args, settings) -> None:
+    """Validate a project's concepts.json, script.json and edit_plan.json (whichever exist; regenerating the
+    readable .md files), or a bare edit_plan.json path."""
+    from pydantic import ValidationError
+
+    from .agents.scriptwriter import ConceptSet, ScriptDoc, concepts_markdown, script_markdown
+    from .agents.tools import format_validation_error
+    from .project import Project, ProjectError
+
+    target = Path(args.target).expanduser()
+    if target.suffix == ".json" and target.is_file():
+        plan, _, _ = _load_plan(settings, args.target)
+        print(plan.summary() + "\n✓ EditPlan hợp lệ")
+        return
+    try:
+        project = Project.open(settings, args.target)
+    except ProjectError as e:
+        raise SystemExit(str(e)) from None
+
+    checked = 0
+    for name, model, render_md in (("concepts", ConceptSet, concepts_markdown), ("script", ScriptDoc, script_markdown)):
+        path = project.script_dir / f"{name}.json"
+        if not path.exists():
+            continue
         try:
-            script = ScriptDoc.model_validate_json(script_json.read_text(encoding="utf-8"))
+            doc = model.model_validate_json(path.read_text(encoding="utf-8"))
         except ValidationError as e:
-            raise SystemExit(f"{script_json} không hợp lệ:\n" + format_validation_error(e)) from None
-        project = Project.open(settings, base_dir)
-        (project.script_dir / "script.md").write_text(script_markdown(script, project), encoding="utf-8")
-        print(f"✓ script.json hợp lệ — đã tạo lại {project.script_dir / 'script.md'}")
+            raise SystemExit(f"{path} không hợp lệ:\n" + format_validation_error(e)) from None
+        (project.script_dir / f"{name}.md").write_text(render_md(doc, project), encoding="utf-8")
+        print(f"✓ {name}.json hợp lệ — đã tạo lại {project.script_dir / f'{name}.md'}")
+        checked += 1
+    if project.plan_path.exists():
+        plan, _, _ = _load_plan(settings, str(project.dir))
+        print(plan.summary() + "\n✓ EditPlan hợp lệ")
+        checked += 1
+    if not checked:
+        raise SystemExit(f"Dự án {project.slug} chưa có concepts.json, script.json hay edit_plan.json")
 
 
 def cmd_schema(args, settings) -> None:
     import json
 
-    from .agents.scriptwriter import ScriptDoc
+    from .agents.scriptwriter import ConceptSet, ScriptDoc
     from .edl import EditPlan
 
-    model = ScriptDoc if args.which == "script" else EditPlan
+    model = {"script": ScriptDoc, "concepts": ConceptSet}.get(args.which, EditPlan)
     print(json.dumps(model.model_json_schema(), ensure_ascii=False, indent=1))
 
 
@@ -181,7 +244,8 @@ def cmd_make(args, settings) -> None:
 
     project = make_video(settings, Path(args.video), goal=args.goal, platform=args.platform, duration=args.duration,
                          style=args.style, audience=args.audience, name=args.name, transcript=args.transcript,
-                         research_topic=args.research, drive=args.drive, export=not args.no_export)
+                         research_topic=args.research, drive=args.drive, export=not args.no_export,
+                         idea=args.idea, concept=args.concept, notes=args.notes)
     print(f"\n✓ Xong. Thư mục dự án: {project.dir}")
 
 
@@ -295,9 +359,17 @@ def build_parser() -> argparse.ArgumentParser:
     a.add_argument("--max-frames", type=int, default=16)
     a.set_defaults(func=cmd_analyze)
 
-    s = sub.add_parser("script", help="Agent 2: nghiên cứu trend + viết kịch bản + EditPlan từ video của bạn")
+    c = sub.add_parser("concepts", help="Agent 2 (bước 1): đề xuất 2-3 hướng dựng khác nhau để bạn chọn")
+    c.add_argument("target", help="File video hoặc tên dự án đã có")
+    brief_args(c)
+    c.add_argument("--idea", help="Ý tưởng riêng của bạn (vd 'làm như game AR') — một hướng sẽ phát triển đúng ý này")
+    c.set_defaults(func=cmd_concepts)
+
+    s = sub.add_parser("script", help="Agent 2 (bước 2): kịch bản + EditPlan theo hướng dựng bạn đã chọn")
     s.add_argument("target", help="File video hoặc tên dự án đã có")
     brief_args(s)
+    s.add_argument("--concept", type=int, help="Số thứ tự hướng dựng đã chọn trong script/concepts.md")
+    s.add_argument("--notes", help="Ghi chú thêm cho hướng đã chọn")
     s.set_defaults(func=cmd_script)
 
     e = sub.add_parser("edit", help="Agent 3: chỉnh EditPlan theo yêu cầu, render, tự kiểm tra và xuất video")
@@ -327,7 +399,7 @@ def build_parser() -> argparse.ArgumentParser:
     v.set_defaults(func=cmd_validate)
 
     sc = sub.add_parser("schema", help="In JSON schema của EditPlan hoặc kịch bản")
-    sc.add_argument("which", choices=["plan", "script"], nargs="?", default="plan")
+    sc.add_argument("which", choices=["plan", "script", "concepts"], nargs="?", default="plan")
     sc.set_defaults(func=cmd_schema)
 
     m = sub.add_parser("make", help="Chạy cả quy trình: phân tích → Agent 2 → Agent 3 (→ Drive)")
@@ -335,7 +407,27 @@ def build_parser() -> argparse.ArgumentParser:
     brief_args(m)
     m.add_argument("--research", metavar="TOPIC", help="Cho Agent 1 nghiên cứu nhanh chủ đề này trước")
     m.add_argument("--no-export", action="store_true", help="Dừng ở bản preview")
+    m.add_argument("--idea", help="Ý tưởng riêng của bạn, đưa vào bước đề xuất hướng dựng")
+    m.add_argument("--concept", type=int, help="Chọn sẵn hướng dựng (bỏ qua câu hỏi)")
+    m.add_argument("--notes", help="Ghi chú cho hướng đã chọn")
     m.set_defaults(func=cmd_make)
+
+    sh = sub.add_parser("sheet", help="Ảnh ghép nhiều khung hình có mốc giây (xem cả video / quanh một điểm cắt)")
+    sh.add_argument("target", help="Tên dự án hoặc file video")
+    sh.add_argument("--source", choices=["source", "preview", "final"], default="preview")
+    sh.add_argument("--start", type=float, default=0.0)
+    sh.add_argument("--end", type=float)
+    sh.add_argument("--count", type=int, default=12)
+    sh.add_argument("--cols", type=int, default=4)
+    sh.add_argument("--width", type=int, default=360)
+    sh.add_argument("--out")
+    sh.set_defaults(func=cmd_sheet)
+
+    nt = sub.add_parser("note", help="Ghi quyết định / phản hồi vào nhật ký dự án (project.md)")
+    nt.add_argument("project")
+    nt.add_argument("text", nargs="+")
+    nt.add_argument("--kind", default="ghi chú", help="vd: phản hồi, quyết định, chọn hướng")
+    nt.set_defaults(func=cmd_note)
 
     k = sub.add_parser("kb", help="Xem / tìm trong kho kiến thức")
     ksub = k.add_subparsers(dest="kb_cmd")

@@ -46,6 +46,12 @@ class MediaInfo:
     video_codec: str | None
     audio_codec: str | None
     size_bytes: int
+    color_transfer: str | None = None
+
+    @property
+    def is_hdr(self) -> bool:
+        """HLG (iPhone default) or PQ video — needs tone-mapping or it renders washed out / blown out."""
+        return self.color_transfer in ("arib-std-b67", "smpte2084")
 
     @property
     def orientation(self) -> str:
@@ -106,6 +112,7 @@ def _probe_cached(path: str, mtime: float) -> MediaInfo:
         video_codec=video.get("codec_name") if video else None,
         audio_codec=audio.get("codec_name") if audio else None,
         size_bytes=int(data.get("format", {}).get("size", 0) or 0),
+        color_transfer=video.get("color_transfer") if video else None,
     )
 
 
@@ -177,6 +184,40 @@ def extract_frame(path: Path, t: float, out: Path, width: int = 512, grid: bool 
     if not out.exists():
         raise MediaError(f"Không trích được khung hình tại {t:.2f}s (có thể vượt quá độ dài video)")
     return out
+
+
+def contact_sheet(path: Path, out: Path, *, start: float = 0.0, end: float | None = None, count: int = 12,
+                  cols: int = 4, width: int = 360) -> tuple[Path, list[float]]:
+    """One image of `count` evenly spaced frames between start and end, each stamped with its time —
+    lets an agent see a whole clip (or the seconds around a cut) at once."""
+    from PIL import Image
+
+    duration = probe(path).duration
+    end = duration if end is None else min(end, duration)
+    if end <= start:
+        raise MediaError(f"Khoảng {start:.2f}-{end:.2f}s không hợp lệ (video dài {duration:.2f}s)")
+    step = (end - start) / count
+    times = [round(start + step * (k + 0.5), 2) for k in range(count)]
+    tmp = out.parent / f".{out.stem}_tiles"
+    tmp.mkdir(parents=True, exist_ok=True)
+    tiles = []
+    for k, t in enumerate(times):
+        tile = tmp / f"{k:02d}.jpg"
+        run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-ss", f"{t:.3f}", "-i", str(path), "-frames:v", "1",
+             "-vf", f"scale={width}:-2,drawtext=text='{t:.2f}s':x=6:y=6:fontsize=h/22:fontcolor=yellow:"
+                    "box=1:boxcolor=black@0.65", str(tile)])
+        tiles.append(Image.open(tile).convert("RGB"))
+    tw, th = tiles[0].size
+    rows = -(-len(tiles) // cols)
+    sheet = Image.new("RGB", (tw * cols + 4 * (cols - 1), th * rows + 4 * (rows - 1)), (20, 20, 20))
+    for k, tile in enumerate(tiles):
+        sheet.paste(tile, ((k % cols) * (tw + 4), (k // cols) * (th + 4)))
+    out.parent.mkdir(parents=True, exist_ok=True)
+    sheet.save(out, quality=88)
+    for f in tmp.iterdir():
+        f.unlink()
+    tmp.rmdir()
+    return out, times
 
 
 def image_block(path: Path) -> dict:

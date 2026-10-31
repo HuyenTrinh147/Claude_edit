@@ -8,6 +8,11 @@ bằng 3 agent dùng Claude + ffmpeg:
 | **Agent 1 — Nghiên cứu** | `vedit research` | Tìm hiểu kỹ thuật edit trên **GitHub, web, YouTube, TikTok**, chắt lọc thành ghi chú trong kho kiến thức `knowledge/` |
 | **Agent 2 — Trend & kịch bản** | `vedit script` | Phân tích video bạn đưa vào, nghiên cứu **trend, từ khoá, hashtag** hiện tại, viết **kịch bản** + **EditPlan** (kế hoạch dựng); tuỳ chọn tạo **thư mục Google Drive** |
 | **Agent 3 — Dựng & xuất** | `vedit edit` | Dựng theo EditPlan, render bản xem trước, **tự xem lại khung hình để sửa lỗi**, rồi **xuất video** + thumbnail |
+| **Agent phản biện** | (trong Claude Code) | Soi lỗi bản xem trước — đối chiếu hướng đã duyệt, gu của bạn và luật dựng — trước khi giao video |
+
+**Quy trình**: phân tích video → Agent 2 **đề xuất 2–3 hướng dựng khác hẳn nhau** → **bạn chọn** (hoặc đưa ý tưởng riêng,
+ví dụ "làm như game AR") → kịch bản + EditPlan → Agent 3 dựng → agent phản biện soi lỗi → xuất. Mọi lời khen/chê của bạn
+được ghi vào nhật ký dự án và **hồ sơ gu** (`profile/gu-nguoi-dung.md`) để các video sau đúng ý hơn.
 
 ```mermaid
 flowchart LR
@@ -82,6 +87,10 @@ vedit validate quan-cafe            # kiểm tra edit_plan.json sau khi sửa ta
 vedit drive sync quan-cafe          # tải kịch bản + video lên Google Drive
 vedit projects                      # danh sách dự án & trạng thái
 vedit fetch "<link Drive/YouTube/TikTok>"   # tải video vào inbox/
+vedit concepts quan-cafe --goal "..." --idea "làm như game AR"   # Agent 2: đề xuất hướng dựng
+vedit script quan-cafe --goal "..." --concept 2 --notes "..."    # kịch bản theo hướng đã chọn
+vedit sheet quan-cafe --source preview      # ảnh ghép nhiều khung hình có mốc giây
+vedit note quan-cafe "chữ hơi nhỏ" --kind "phản hồi"            # ghi phản hồi vào nhật ký dự án
 ```
 
 ## Chi tiết 3 agent

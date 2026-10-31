@@ -12,6 +12,7 @@ from anthropic.lib.tools import ToolError
 from pydantic import ValidationError
 
 from ..config import Settings
+from ..ass import check_fonts
 from ..edl import EditPlan, validate_against_media
 from ..knowledge import CATEGORIES, KnowledgeBase
 from ..media import MediaError, extract_frame, image_block, probe
@@ -215,7 +216,8 @@ def frame_tools(project: Project) -> list:
 
 # ---- edit plan ------------------------------------------------------------------------------
 
-def plan_tools(project: Project, *, on_save=None) -> list:
+def plan_tools(project: Project, *, on_save=None, font: str | None = None, fonts_dir: Path | None = None) -> list:
+    """`font` (the default font) turns on font checks: unknown families and missing characters are errors."""
     def check(plan_data: dict) -> EditPlan:
         plan_data.setdefault("sources", {})
         plan_data["sources"].setdefault("main", str(project.input_path))
@@ -224,6 +226,8 @@ def plan_tools(project: Project, *, on_save=None) -> list:
         except ValidationError as e:
             raise ToolError("EditPlan không hợp lệ, sửa rồi gọi lại:\n" + format_validation_error(e)) from e
         problems = validate_against_media(plan, project.dir, probe)
+        if font:
+            problems += check_fonts(plan, font, fonts_dir)
         if problems:
             raise ToolError("EditPlan không khớp với media thực tế, sửa rồi gọi lại:\n- " + "\n- ".join(problems))
         return plan

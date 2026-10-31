@@ -14,7 +14,7 @@ _Tự động tạo bởi vedit — đừng sửa tay._
 - [Nhịp cắt và kỹ thuật giữ chân người xem](techniques/nhip-cat-va-ky-thuat-giu-chan-nguoi-xem.md) — _nhịp, pacing, độ dài cảnh, asl, pattern interrupt, retention editing, hook, loop, jump cut_
 - [Phụ đề viral: từng từ, highlight, emoji](techniques/phu-de-viral-tung-tu-highlight-emoji.md) — _phụ đề, caption, karaoke, word-by-word, highlight, hormozi, emoji, libass, pycaps, safe zone_
 - [Speed ramp, freeze frame, keyframe zoom và split screen](techniques/speed-ramp-freeze-frame-keyframe-zoom-va-split-screen.md) — _speed ramp, slow motion, velocity, freeze frame, keyframe, easing, zoompan, ken burns, punch-in, shake, parallax, split screen_
-- [Tư duy dựng sáng tạo cho video ngắn](techniques/tu-duy-dung-sang-tao-cho-video-ngan.md) — _sáng tạo, editor, nhịp, motion graphics, sfx, hook, checklist_
+- [Tư duy dựng sáng tạo cho video ngắn](techniques/tu-duy-dung-sang-tao-cho-video-ngan.md) — _luật dựng, quy tắc, sáng tạo, phong cách, duyệt, guardrails, nhịp, payoff_
 - [buttercut: Agent dựng bản cắt thô theo beat và vòng rà soát](techniques/buttercut-agent-dung-ban-cat-tho-theo-beat-va-vong-ra-soat.md) — _agent dựng, roughcut, beat, rà soát, nhịp, ghi chú biên tập, prompt, buttercut_
 - [buttercut: Cắt theo mốc từng từ, giữ thoại liền mạch](techniques/buttercut-cat-theo-moc-tung-tu-giu-thoai-lien-mach.md) — _word-level, điểm cắt, transcript, whisperx, thoại, jump cut, buttercut_
 - [buttercut: Mẫu phối hợp agent, cổng kiểm tra và giao tiếp](techniques/buttercut-mau-phoi-hop-agent-cong-kiem-tra-va-giao-tiep.md) — _agent, sub-agent, điều phối, kiểm tra chất lượng, ux, giao tiếp, claude code, buttercut_

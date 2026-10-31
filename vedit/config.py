@@ -62,6 +62,11 @@ class Settings:
     def inbox_dir(self) -> Path:
         return self.root / "inbox"
 
+    @property
+    def profile_path(self) -> Path:
+        """The user's taste & feedback history, read by every agent before it starts."""
+        return self.root / "profile" / "gu-nguoi-dung.md"
+
 
 def _default_root() -> Path:
     """The vedit workspace containing the current directory, else the checkout this package
@@ -92,7 +97,7 @@ def load_settings(root: Path | None = None) -> Settings:
         knowledge_dir=_path("VEDIT_KNOWLEDGE_DIR", root / "knowledge"),
         projects_dir=_path("VEDIT_PROJECTS_DIR", root / "projects"),
         assets_dir=_path("VEDIT_ASSETS_DIR", root / "assets"),
-        font=_env("VEDIT_FONT", "Inter"),
+        font=_env("VEDIT_FONT", "Be Vietnam Pro"),  # bundled; designed for Vietnamese stacked diacritics
         whisper_model=_env("VEDIT_WHISPER_MODEL", "small"),
         github_token=_env("GITHUB_TOKEN"),
         gdrive_oauth_client=_path("GOOGLE_OAUTH_CLIENT_FILE"),

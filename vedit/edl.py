@@ -13,10 +13,11 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 CANVAS_PRESETS: dict[str, tuple[int, int]] = {
     "tiktok": (1080, 1920),
@@ -49,6 +50,12 @@ BUILTIN_SFX = ("pop", "click", "ding", "sparkle", "whoosh", "thud", "rise")
 
 class _Model(BaseModel):
     model_config = ConfigDict(extra="forbid")
+
+
+def nfc(value):
+    """Vietnamese typed on some keyboards arrives decomposed (NFD): base letter + combining marks, which
+    every font renders with misplaced diacritics. Store all on-screen text precomposed (NFC)."""
+    return unicodedata.normalize("NFC", value) if isinstance(value, str) else value
 
 
 class Canvas(_Model):
@@ -137,6 +144,8 @@ class TextOverlay(_Model):
     y: float | None = Field(None, ge=0, le=1, description="Tâm dọc tuỳ chỉnh (0..1); ghi đè position")
     rotation: float = Field(0, ge=-30, le=30, description="Nghiêng chữ kiểu sticker (độ, dương = ngược kim đồng hồ)")
 
+    _nfc = field_validator("text", mode="before")(nfc)
+
     @model_validator(mode="after")
     def _times(self) -> "TextOverlay":
         if self.end <= self.start:
@@ -149,12 +158,16 @@ class CaptionWord(_Model):
     start: float = Field(ge=0)
     end: float = Field(gt=0)
 
+    _nfc = field_validator("text", mode="before")(nfc)
+
 
 class CaptionSegment(_Model):
     start: float = Field(ge=0, description="Timeline (giây)")
     end: float = Field(gt=0, description="Timeline (giây)")
     text: str = Field(min_length=1)
     words: list[CaptionWord] = Field(default_factory=list, description="Mốc từng từ (cho style karaoke)")
+
+    _nfc = field_validator("text", mode="before")(nfc)
 
 
 class Captions(_Model):
@@ -201,6 +214,8 @@ class Graphic(_Model):
     count: int = Field(7, ge=1, le=24, description="sparkles: số ngôi sao")
     thickness: int = Field(10, ge=2, le=60, description="progress_bar: độ dày (px)")
     font: str | None = None
+
+    _nfc = field_validator("text", "label", mode="before")(nfc)
 
     @model_validator(mode="after")
     def _check(self) -> "Graphic":
