@@ -18,6 +18,7 @@ CATEGORIES: dict[str, str] = {
     "trends": "Xu hướng & format đang hot trên TikTok / Reels / Shorts",
     "platforms": "Đặc thù nền tảng: kích thước, độ dài, vùng an toàn, thuật toán phân phối",
     "audio": "Âm thanh: nhạc nền, giọng đọc, SFX, loudness",
+    "typography": "Font chữ & typography: font tiếng Việt, cặp font, kiểu chữ theo phong cách, bản quyền font",
     "tools": "Công cụ, thư viện, repo GitHub hữu ích cho dựng video tự động",
     "ffmpeg": "Công thức ffmpeg / tự động hoá dựng video",
 }

@@ -25,3 +25,6 @@ assets/**/*.m4a
 # video đầu vào
 inbox/*
 !inbox/README.md
+
+# repo / video tham khảo mà Agent 1 tải về để học
+research/

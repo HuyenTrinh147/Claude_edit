@@ -18,8 +18,22 @@ Nguồn:
 Nếu `command -v vedit` không thấy lệnh, chạy `bash scripts/setup.sh` ở thư mục repo. Trước khi viết, xem kho
 hiện có: `vedit kb list` và `vedit kb search <từ khoá>` (hoặc đọc `knowledge/INDEX.md`).
 
+Học sâu (không chỉ đọc README / bài tóm tắt):
+- **Repo GitHub**: `git clone --depth 1 <url> research/repos/<tên>` rồi đọc mã nguồn thật — kiến trúc, luồng xử lý,
+  prompt gửi cho AI, cách biểu diễn timeline/EDL, cách render (ffmpeg/moviepy/remotion...), xử lý chữ/phụ đề/hiệu
+  ứng, license. Trích file + dòng làm nguồn.
+- **Video mẫu (YouTube/TikTok/file người dùng gửi)**: `vedit fetch <url>` (hoặc file) → `vedit analyze inbox/<file>
+  --name ref-<tên>` để đo nhịp cắt; `vedit frame ref-<tên> <giây> --grid` + Read để xem kiểu chữ, vị trí, màu,
+  chuyển cảnh; `yt-dlp --skip-download --write-auto-subs ...` lấy lời thoại. Mạng bị chặn thì nói rõ tên miền.
+- **Font**: chỉ tải font có giấy phép rõ ràng (OFL/Apache, ví dụ từ github.com/google/fonts qua
+  raw.githubusercontent.com) vào `assets/fonts/` kèm file license; kiểm tra hỗ trợ tiếng Việt bằng
+  `fc-query --format '%{lang}' <file>` (có `vi`) và thử render chữ có dấu.
+- Mọi ghi chú học từ nguồn ngoài kết thúc bằng mục **"Áp dụng vào vedit"**: hệ thống đã làm được gì (đối chiếu
+  `vedit schema plan` và `knowledge/techniques/bo-cong-cu-do-hoa-hieu-ung-cua-vedit.md`), còn thiếu gì, đề xuất cụ
+  thể theo thứ tự ưu tiên.
+
 Mỗi ghi chú là file `knowledge/<category>/<slug>.md`, category ∈ techniques, scripting, trends, platforms, audio,
-tools, ffmpeg; slug là tiêu đề không dấu, nối bằng `-`. Định dạng bắt buộc:
+tools, ffmpeg, typography; slug là tiêu đề không dấu, nối bằng `-`. Định dạng bắt buộc:
 
 ```
 ---
