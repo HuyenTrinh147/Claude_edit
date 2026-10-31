@@ -12,7 +12,8 @@ import math
 from dataclasses import dataclass, field
 
 from .ass import FontBook, alpha_tag, ass_text, ass_time, bgr
-from .edl import Card, Counter, EditPlan, Icon, Meter, Panel, Popup, Prompt, Reticle, Slots, ValueKey, Visor
+from .edl import (Card, Counter, EditPlan, Icon, Meter, Panel, Popup, Prompt, Reticle, Slash, Slots, Sprite, ValueKey,
+                  Visor)
 from .world import World
 
 HUD_FONT = "Chakra Petch"   # techy HUD labels (bundled, Vietnamese OK)
@@ -248,6 +249,7 @@ class Pen:
 
     reward_font: str = ""
     bbox: list[float] | None = None   # canvas-px extent of what was drawn (for keeping items on screen)
+    world: World | None = None
 
     def _grow(self, slot: str, x0: float, y0: float, x1: float, y1: float) -> None:
         if slot.startswith(("fly", "trail", "flash", "glow")) or slot.endswith("~"):
@@ -580,6 +582,14 @@ def _bezier(p0, p1, p2, u):
 
 def _chip(pen: Pen, slot: str, sub: int, x: float, y: float, r: float, item: Slots, i: int, scale: float = 1.0) -> None:
     r *= scale
+    sprite = item.sprites[i] if i < len(item.sprites) else None
+    art = load_sprite(sprite, pen.world) if sprite else None
+    if art:
+        side = r * 2.1
+        pen.shape(slot + "c", sub, round_rect(x - side / 2, y - side / 2, x + side / 2, y + side / 2, side * 0.16),
+                  fill=DARK, border=3, border_color=item.accent_color)
+        draw_sprite(pen, slot + "s", sub + 1, x, y, side * 0.86, art)
+        return
     pen.shape(slot + "c", sub, circle(x, y, r), fill=item.accent_color, border=3, border_color=DARK)
     icon = item.icons[i] if i < len(item.icons) else None
     if icon:
@@ -633,14 +643,23 @@ def _card(item: Card, pen: Pen, t: float, W: int) -> None:
     cw = item.width * W
     title_h, star_r = sz * 1.9, sz * 0.95
     rows = len(item.items)
-    ch = title_h + star_r * 3.2 + rows * sz * 1.2 + sz * 0.8
+    art = load_sprite(item.sprite, pen.world) if item.sprite else None
+    pic = star_r * 3.4 if art else 0.0
+    ch = title_h + pic + (sz * 0.5 if art else 0) + star_r * 3.2 + rows * sz * 1.2 + sz * 0.8
     x0, y0, x1, y1 = -cw / 2, -ch / 2, cw / 2, ch / 2
     pen.shape("glow", 0, round_rect(x0, y0, x1, y1, sz * 0.4), fill=item.color, opacity=0.35, blur=14)
     pen.shape("bg", 1, round_rect(x0, y0, x1, y1, sz * 0.4), fill=DARK, opacity=0.88, border=3, border_color=item.color)
     pen.shape("titlebar", 1, round_rect(x0 + 10, y0 + 10, x1 - 10, y0 + title_h, sz * 0.3), fill=item.color, opacity=0.95)
     pen.text("title", 3, 0, y0 + 10 + (title_h - 10) / 2, item.text, size=sz * 1.0, color=DARK,
              font=item.font or pen.reward_font)
-    sy = y0 + title_h + star_r * 1.6
+    if art:
+        pcy = y0 + title_h + sz * 0.5 + pic / 2
+        reveal = ease_out((t - item.start - 0.15) / 0.3)
+        if reveal > 0:
+            pen.shape("picbg", 1, round_rect(-pic * 0.56, pcy - pic * 0.56, pic * 0.56, pcy + pic * 0.56, pic * 0.1),
+                      fill="#000000", opacity=0.5 * reveal, border=3, border_color=item.color, border_opacity=reveal)
+            draw_sprite(pen, "pic", 2, 0, pcy, pic * reveal, art)
+    sy = y0 + title_h + pic + (sz * 0.5 if art else 0) + star_r * 1.6
     for i in range(3):
         sx = (i - 1) * star_r * 2.5
         lift = -star_r * 0.28 if i == 1 else 0.0
@@ -694,13 +713,21 @@ def _icon(item: Icon, pen: Pen, t: float) -> None:
     saved = (pen.env.rot, pen.env.dy)
     sx = 1.0
     if item.spin:
-        if item.icon == "coin":
+        if item.icon == "coin" or item.sprite is not None:
             sx = max(abs(math.cos(2 * math.pi * 0.9 * age)), 0.08)
         elif item.icon == "star":
             pen.env.rot += 12 * math.sin(2 * math.pi * 1.1 * age)
         else:
             pen.env.dy += item.size * 0.08 * math.sin(2 * math.pi * 1.3 * age)
     size = item.size * 1.6
+    art = load_sprite(item.sprite, pen.world) if item.sprite else None
+    if item.sprite is not None:
+        if art:
+            pen.shape("bg", 1, round_rect(-size * 0.58 * sx, -size * 0.58, size * 0.58 * sx, size * 0.58, size * 0.12),
+                      fill=DARK, opacity=0.85, border=3, border_color=item.accent_color)
+            draw_sprite(pen, "spr", 2, 0, 0, size, art, squash=sx)
+        pen.env.rot, pen.env.dy = saved
+        return
     for n, (path, role) in enumerate(icon_path(item.icon, size)):
         path = [(op, [(x * sx, y) for x, y in pts]) for op, pts in path]
         if role == "fill":
@@ -764,6 +791,146 @@ def _visor(item: Visor, pen: Pen, t: float, W: int, H: int) -> None:
               opacity=0.05, blur=10)
 
 
+# ---- sprites: pixel art cut from the video ------------------------------------------------------------
+
+@dataclass
+class SpriteArt:
+    w: int
+    h: int
+    runs: dict[str, list[tuple[int, int, int]]]   # colour -> [(row, first col, end col)]
+
+
+_SPRITES: dict[tuple, SpriteArt | None] = {}
+
+
+def grab_frame(path, t: float):
+    """One display-oriented RGB frame (PIL) at source time t; HDR is tone-mapped like the renderer does."""
+    import io
+    import subprocess
+
+    from PIL import Image
+
+    from .media import probe
+    from .track import HDR_TO_SDR
+
+    vf = (HDR_TO_SDR + "," if probe(path).is_hdr else "") + "format=rgb24"
+    out = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-ss", f"{max(t, 0):.3f}", "-i", str(path),
+                          "-frames:v", "1", "-vf", vf, "-f", "image2pipe", "-vcodec", "png", "-"],
+                         capture_output=True)
+    if out.returncode or not out.stdout:
+        return None
+    return Image.open(io.BytesIO(out.stdout)).convert("RGB")
+
+
+def make_sprite(image, sprite: Sprite) -> SpriteArt:
+    """Crop -> area-average down to a few pixels -> punchier colours -> palette of `colors` -> pixel runs,
+    with chamfered corners like an item tile."""
+    from PIL import Image, ImageEnhance
+
+    W0, H0 = image.size
+    x, y, w, h = sprite.box
+    crop = image.crop((round(x * W0), round(y * H0), round((x + w) * W0), round((y + h) * H0)))
+    if crop.width >= crop.height:
+        pw, ph = sprite.pixels, max(2, round(sprite.pixels * crop.height / crop.width))
+    else:
+        pw, ph = max(2, round(sprite.pixels * crop.width / crop.height)), sprite.pixels
+    small = crop.resize((pw, ph), Image.Resampling.BOX)
+    small = ImageEnhance.Contrast(ImageEnhance.Color(small).enhance(1.3)).enhance(1.12)
+    quant = small.quantize(colors=sprite.colors, method=Image.Quantize.MEDIANCUT).convert("RGB")
+    corner = max(1, min(pw, ph) // 7)
+    runs: dict[str, list[tuple[int, int, int]]] = {}
+    for r in range(ph):
+        c = 0
+        while c < pw:
+            if min(c, pw - 1 - c) + min(r, ph - 1 - r) < corner:
+                c += 1
+                continue
+            color = quant.getpixel((c, r))
+            end = c + 1
+            while end < pw and min(end, pw - 1 - end) + min(r, ph - 1 - r) >= corner and quant.getpixel((end, r)) == color:
+                end += 1
+            runs.setdefault("#%02X%02X%02X" % color, []).append((r, c, end))
+            c = end
+    return SpriteArt(pw, ph, runs)
+
+
+def load_sprite(sprite: Sprite | None, world: World | None) -> SpriteArt | None:
+    if sprite is None or world is None or world.base_dir is None:
+        return None
+    path = world.plan.resolve(sprite.source, world.base_dir)
+    key = (str(path), round(sprite.t, 3), tuple(sprite.box), sprite.pixels, sprite.colors)
+    if key not in _SPRITES:
+        image = grab_frame(path, sprite.t) if path.exists() else None
+        _SPRITES[key] = make_sprite(image, sprite) if image is not None else None
+    return _SPRITES[key]
+
+
+def draw_sprite(pen: Pen, slot: str, sub: int, cx: float, cy: float, size: float, art: SpriteArt,
+                squash: float = 1.0) -> None:
+    """Pixel art centred on (cx, cy), longest side `size` px; one drawing per colour, cells overlap a hair so
+    no seams show between them."""
+    if size <= 1:
+        return
+    cell = size / max(art.w, art.h)
+    ov = 0.35
+    left, top = cx - art.w * cell * squash / 2, cy - art.h * cell / 2
+    for n, color in enumerate(sorted(art.runs)):
+        path: Path = []
+        for r, c0, c1 in art.runs[color]:
+            path += rect(left + c0 * cell * squash - ov, top + r * cell - ov,
+                         left + c1 * cell * squash + ov, top + (r + 1) * cell + ov)
+        pen.shape(f"{slot}{n}", sub, path, fill=color)
+
+
+# ---- slash ------------------------------------------------------------------------------------------
+
+def _slash(item: Slash, pen: Pen, t: float, W: int) -> None:
+    age = t - item.start
+    L, T = item.length * W, item.thickness
+    a = math.radians(item.angle)
+    dx, dy = math.cos(a), -math.sin(a)
+    nx, ny = -dy, dx
+
+    def P(u: float, w: float) -> tuple[float, float]:
+        return u * L * dx + w * nx, u * L * dy + w * ny
+
+    draw_t, fade_t = 0.07, 0.18
+    head = ease_out(age / draw_t)
+    tail = ease_in(clamp((age - 0.025) / 0.14))
+    if head - tail > 0.01:
+        top, bot, glow_top, glow_bot = [], [], [], []
+        for i in range(17):
+            s_ = i / 16
+            u = tail + (head - tail) * s_ - 0.5
+            w = T / 2 * math.sin(math.pi * s_ ** 2.4)
+            top.append(P(u, w))
+            bot.append(P(u, -w))
+            glow_top.append(P(u, w * 2.4 + 3))
+            glow_bot.append(P(u, -w * 2.4 - 3))
+        pen.shape("glow", 1, polygon(glow_top + glow_bot[::-1]), fill=item.accent_color, opacity=0.75, blur=9)
+        pen.shape("core", 2, polygon(top + bot[::-1]), fill=item.color)
+    if draw_t <= age < draw_t + fade_t:  # afterimage along the whole cut
+        q = (age - draw_t) / fade_t
+        top = [P(i / 16 - 0.5, T * 0.16 * (1 - q) * math.sin(math.pi * i / 16) + 0.6) for i in range(17)]
+        bot = [P(i / 16 - 0.5, -T * 0.16 * (1 - q) * math.sin(math.pi * i / 16) - 0.6) for i in range(17)]
+        pen.shape("after", 2, polygon(top + bot[::-1]), fill=item.color, opacity=0.9 * (1 - q))
+    for i in range(item.particles):
+        u = ((i * 0.6180339) % 1) - 0.5
+        born = draw_t * (u + 0.5)
+        life = age - born
+        if not 0 <= life < 0.32:
+            continue
+        rnd = (i * 0.3819660 + 0.17) % 1
+        side = 1 if i % 2 else -1
+        q = life / 0.32
+        dist = (24 + 150 * rnd) * ease_out(q)
+        along = (rnd - 0.5) * 50 * ease_out(q)
+        px, py = P(u + along / L, side * (T * 0.4 + dist))
+        r = max(T * (0.22 + 0.3 * rnd) * (1 - q), 0.6)
+        pen.shape(f"pt{i}", 3, polygon([(px, py - r), (px + r, py), (px, py + r), (px - r, py)]),
+                  fill=item.accent_color if i % 3 else item.color, opacity=1 - q)
+
+
 # ---- driver -------------------------------------------------------------------------------------------
 
 def _flusher(runs: dict, lines: list[str], edge):
@@ -822,6 +989,8 @@ def hud_events(plan: EditPlan, world: World, fonts: FontBook, default_font: str)
             _icon(item, pen, t)
         elif item.type == "visor":
             _visor(item, pen, t, W, H)
+        elif item.type == "slash":
+            _slash(item, pen, t, W)
 
     for idx, item in enumerate(plan.hud):
         layer = BASE_LAYER + idx * 6
@@ -852,13 +1021,14 @@ def hud_events(plan: EditPlan, world: World, fonts: FontBook, default_font: str)
                 cx, cy = W / 2, H / 2
             else:
                 cx, cy = item.x * W, item.y * H
-            pen = Pen(cx, cy, envelope(item, t, H), fonts, item.font or hud_font, layer, reward_font=reward_font)
+            pen = Pen(cx, cy, envelope(item, t, H), fonts, item.font or hud_font, layer, reward_font=reward_font,
+                      world=world)
             draw(item, pen, t, box, k)
-            if item.anchor is not None and item.type not in ("reticle", "visor") and pen.bbox:
+            if item.anchor is not None and item.type not in ("reticle", "visor", "slash") and pen.bbox:
                 shift = _keep_inside(pen.bbox, W, H)   # world-anchored UI must not slide off screen
                 if shift != (0.0, 0.0):
                     pen = Pen(cx + shift[0], cy + shift[1], envelope(item, t, H), fonts, item.font or hud_font,
-                              layer, reward_font=reward_font)
+                              layer, reward_font=reward_font, world=world)
                     draw(item, pen, t, box, k)
             seen = set()
             for slot, lay, text in pen.parts:

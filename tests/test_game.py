@@ -255,3 +255,48 @@ def test_render_with_hud_freeze_and_game_sfx(media, tmp_path):
     assert ass.count("Dialogue:") > 50
     snapshot = json.loads((tmp_path / "out.plan.json").read_text(encoding="utf-8"))
     assert len(snapshot["hud"]) == len(ALL_HUD)
+
+
+# ---- slash + sprites cut from the video ---------------------------------------------------------------
+
+def test_make_sprite_pixelates_quantizes_and_chamfers():
+    from PIL import Image
+
+    from vedit.edl import Sprite
+    from vedit.hud import make_sprite
+
+    image = Image.new("RGB", (200, 100), (230, 40, 30))
+    image.paste((30, 60, 220), (100, 0, 200, 100))   # right half blue
+    art = make_sprite(image, Sprite(t=0, box=(0, 0, 1, 1), pixels=8, colors=4))
+    assert (art.w, art.h) == (8, 4)
+    assert len(art.runs) == 2                       # two flat colours survive quantisation
+    cells = {(r, c) for runs in art.runs.values() for r, c0, c1 in runs for c in range(c0, c1)}
+    assert (0, 0) not in cells and (3, 7) not in cells   # chamfered corners
+    assert (1, 1) in cells and len(cells) == 8 * 4 - 4
+
+
+@needs_ffmpeg
+def test_slash_and_video_sprites_draw(media, tmp_path):
+    plan = EditPlan.model_validate({
+        "sources": {"main": str(media["land"])},
+        "canvas": {"width": 540, "height": 960, "fps": 30},
+        "clips": [{"source": "main", "start": 0, "end": 1.5}],
+        "hud": [
+            {"type": "slash", "start": 0.2, "end": 0.5, "x": 0.5, "y": 0.5},
+            {"type": "slots", "start": 0, "end": 1.5, "count": 2, "items": ["MUỐI"], "times": [0.6],
+             "sprites": [{"t": 1.0, "box": [0.1, 0.1, 0.3, 0.3], "pixels": 10, "colors": 6}]},
+            {"type": "card", "start": 0.8, "end": 1.5, "sprite": {"t": 4.5, "box": [0, 0, 1, 1]}},
+            {"type": "icon", "start": 0, "end": 1.5, "sprite": {"t": 2.5, "box": [0.2, 0.2, 0.5, 0.5]}, "spin": True},
+        ]})
+    assert validate_against_media(plan, tmp_path, probe) == []
+    ass = build_ass(plan, "DejaVu Sans", Path("assets/fonts"), fps=30, base_dir=tmp_path, probe=probe)
+    slash = [ln for ln in ass.splitlines() if ln.startswith(("Dialogue: 20,", "Dialogue: 21,", "Dialogue: 22,",
+                                                             "Dialogue: 23,"))]
+    assert len(slash) > 10                           # streak, afterimage and particles over ~9 frames
+    colours = set(re.findall(r"\\1c(&H[0-9A-F]{6}&)", ass))
+    assert len(colours) > 12                         # pixel-art palettes from three different frames
+    bad = plan.model_copy(update={"hud": [plan.hud[2].model_copy(update={"sprite": plan.hud[2].sprite.model_copy(
+        update={"t": 99.0})})]})
+    assert any("vượt quá độ dài nguồn" in p for p in validate_against_media(bad, tmp_path, probe))
+    with pytest.raises(ValidationError, match="đúng một"):
+        color_plan(hud=[{"type": "icon", "start": 0, "end": 1}])

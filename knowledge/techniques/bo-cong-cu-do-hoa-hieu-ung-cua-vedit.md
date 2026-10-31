@@ -64,7 +64,8 @@ Màu: `color` (nền nhãn/huy hiệu), `text_color`, `accent_color` (chấm, đ
 
 ## Giao diện game & bám vật (`hud`, `vedit track`)
 Khung kính VR, khung ngắm bám vật, bảng nhiệm vụ tick dần, thanh đo có vùng chuẩn, số chạy / đồng hồ đếm lùi, chữ thưởng
-PERFECT!, túi đồ, thẻ ★★★, nút tay cầm VR, icon — xem `techniques/giao-dien-game-hud-bam-vat-cho-video`.
+PERFECT!, túi đồ (vật phẩm pixel-art cắt từ chính video), thẻ ★★★, nút tay cầm VR, icon, vệt chém — xem
+`techniques/giao-dien-game-hud-bam-vat-cho-video`.
 
 ## Dừng hình (`Clip.freeze`)
 `"freeze": 1.0` giữ khung cuối của clip thêm 1 giây (tiếng gốc im) — chỗ cho thẻ kết / khoảnh khắc "PAUSE".

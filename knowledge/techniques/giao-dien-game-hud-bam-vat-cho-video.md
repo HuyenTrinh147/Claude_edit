@@ -52,7 +52,13 @@ tiếng Việt. Chữ HUD tự có quầng tối nên đọc được trên nề
 | `slots` | túi đồ N ô, vật phẩm bay từ vật thật vào ô theo đường cong | `count`, `items[]`, `icons[]`, `times[]` (giây chạm ô), `sources[]` (anchor từng món), `fly`, `slot_size` |
 | `card` | thẻ hoàn thành: tiêu đề, 0–3 sao đập vào lần lượt, dòng phụ | `text`, `stars`, `star_delay`, `star_gap`, `items[]`, `width` |
 | `prompt` | nút tay cầm VR "A" + hành động, vòng giữ-nút chạy đầy | `button`, `text`, `hold[from,to]`, `blink` |
-| `icon` | icon vector: star, check, lock, coin, heart, hand, clock, drop, bolt, flame | `icon`, `spin` |
+| `icon` | icon vector: star, check, lock, coin, heart, hand, clock, drop, bolt, flame — hoặc `sprite` cắt từ video | `icon` hoặc `sprite`, `spin` |
+| `slash` | vệt chém sáng quét qua điểm cắt (~0,3 s) rồi vỡ thành mảnh — PERFECT CUT | `angle` (0 = ngang, dương = chéo lên), `length`, `thickness`, `particles`, `color` (lõi), `accent_color` (quầng) |
+
+**Vật phẩm cắt từ chính video (`sprite`)**: `{"t": <giây NGUỒN>, "box": [x, y, w, h], "pixels": 16, "colors": 10}`
+→ khung hình tại `t` được cắt theo hộp, thu về vài chục pixel và vài màu thành **pixel-art 8-bit** (bo góc như ô vật
+phẩm). Dùng trong `slots.sprites[i]` (thay icon từng món — cục muối, hạt đường thật), `card.sprite` (món thành phẩm phía
+trên hàng sao), `icon.sprite`. Hộp bao sát vật; `pixels` 12–16 cho vật nhỏ, 20–24 cho món trên thẻ.
 
 `keys` = giá trị theo thời gian: `{"t": 3.2, "v": 0.8, "ease": "out"}`; `ease` là cách đi TỪ mốc trước tới mốc này
 (linear, in, out, inout, hold = nhảy cóc). Timer: `v` là số giây (259200 = 72:00:00) — đếm lùi tua nhanh bằng hai mốc.
@@ -71,7 +77,7 @@ hoặc khoảnh khắc "PAUSE" của game.
 ## 6. Công thức một màn chơi (ví dụ)
 1. 0–0.5s: `visor` boot + `panel` QUEST hiện (enter slide) → người xem hiểu ngay "đây là game".
 2. Mỗi thao tác = 1 mini-game: `reticle` dò → khoá đúng lúc tay chạm vật (`sfx:lock`); `meter` khi rót; `popup`
-   PERFECT! đúng khung tiếng thật; tick một dòng trong `panel` (`sfx:tick`/`pickup`).
+   PERFECT! đúng khung tiếng thật; tick một dòng trong `panel` (`sfx:tick`/`pickup`); cú cắt = `slash` + `sfx:slash`.
 3. Nhặt nguyên liệu: `slots` với `sources` bám từng vật, `sfx:zip` lúc bay, `sfx:pickup` lúc chạm ô.
 4. Cao trào: COMBO ×2, ×3 (`popup` + `sfx:combo` pitch 0/2/4 + `motion` punch).
 5. Kết: `freeze` + `card` ★★★ (`sfx:complete`), `counter` timer 72:00:00 tua về 00:00:00, "LEVEL 2 UNLOCKS IN 3 DAYS".

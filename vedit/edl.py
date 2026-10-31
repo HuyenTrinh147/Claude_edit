@@ -322,6 +322,25 @@ class _Hud(_Model):
         return self
 
 
+class Sprite(_Model):
+    """A pixel-art item cut from the video itself (8-bit inventory look): crop a box at a source moment,
+    downscale to a few pixels and a few colours."""
+
+    t: float = Field(ge=0, description="Giây NGUỒN của khung hình lấy vật")
+    box: tuple[float, float, float, float] = Field(
+        description="[x, y, w, h] tỉ lệ khung nguồn bao sát vật (góc trên-trái + rộng, cao) — đo bằng `vedit frame --grid`")
+    source: str = Field("main", description="Khoá nguồn trong sources (mặc định video chính)")
+    pixels: int = Field(16, ge=6, le=40, description="Số pixel theo cạnh dài (ít = đậm chất 8-bit)")
+    colors: int = Field(10, ge=2, le=24, description="Số màu sau khi lượng tử hoá")
+
+    @model_validator(mode="after")
+    def _check_box(self) -> "Sprite":
+        x, y, w, h = self.box
+        if not (0 <= x < 1 and 0 <= y < 1 and 0 < w <= 1 and 0 < h <= 1 and x + w <= 1.001 and y + h <= 1.001):
+            raise ValueError(f"sprite box {list(self.box)} phải là [x, y, w, h] trong khung 0..1")
+        return self
+
+
 class Reticle(_Hud):
     type: Literal["reticle"]
     text: str = Field("", description="Nhãn cạnh khung ngắm, vd 'CHILI'")
@@ -405,6 +424,8 @@ class Slots(_Hud):
     count: int = Field(4, ge=1, le=8, description="Số ô túi đồ")
     items: list[str] = Field(default_factory=list, description="Tên vật phẩm theo thứ tự vào túi (ngắn: 'TỎI')")
     icons: list[HudIcon | None] = Field(default_factory=list, description="Icon cho từng vật phẩm (tuỳ chọn)")
+    sprites: list[Sprite | None] = Field(default_factory=list,
+                                         description="Ảnh pixel-art cắt từ video cho từng vật phẩm (ưu tiên hơn icons)")
     times: list[float] = Field(default_factory=list, description="Timeline (giây) vật phẩm thứ i chạm vào ô")
     sources: list[Anchor | None] = Field(default_factory=list,
                                          description="Vật phẩm thứ i bay ra từ vật thật này (track); thiếu = from_x/y")
@@ -430,6 +451,7 @@ class Card(_Hud):
     star_gap: float = Field(0.28, ge=0.05, le=2)
     items: list[str] = Field(default_factory=list, max_length=5, description="Dòng phụ, vd 'Độ giòn: 100%'")
     width: float = Field(0.78, gt=0.2, le=0.96)
+    sprite: Sprite | None = Field(None, description="Ảnh pixel-art của món (cắt từ video) trên thẻ, phía trên hàng sao")
 
     _nfc = field_validator("text", "items", mode="before")(nfc_list)
 
@@ -453,8 +475,30 @@ class Prompt(_Hud):
 
 class Icon(_Hud):
     type: Literal["icon"]
-    icon: HudIcon = Field(description="star, check, lock, coin, heart, hand, clock, drop, bolt, flame")
+    icon: HudIcon | None = Field(None, description="star, check, lock, coin, heart, hand, clock, drop, bolt, flame")
+    sprite: Sprite | None = Field(None, description="Hoặc ảnh pixel-art cắt từ video thay cho icon vẽ sẵn")
     spin: bool = Field(False, description="Lắc / xoay nhẹ liên tục (đồng xu, sao)")
+
+    @model_validator(mode="after")
+    def _one(self) -> "Icon":
+        if (self.icon is None) == (self.sprite is None):
+            raise ValueError("icon: cần đúng một trong hai — 'icon' (vẽ sẵn) hoặc 'sprite' (cắt từ video)")
+        return self
+
+
+class Slash(_Hud):
+    """A sword-swipe streak (game 'cut' feedback): a bright tapered stroke sweeps across, leaves an afterimage
+    and bursts into particles. Lasts ~0.3 s; centre it on the cut (or anchor it to a track)."""
+
+    type: Literal["slash"]
+    angle: float = Field(-28, ge=-180, le=180, description="Hướng vệt (độ): 0 = ngang trái→phải, dương = chéo lên")
+    length: float = Field(0.55, gt=0.05, le=1.5, description="Dài vệt (tỉ lệ chiều rộng khung)")
+    thickness: int = Field(22, ge=2, le=90, description="Độ dày chỗ dày nhất (px)")
+    particles: int = Field(14, ge=0, le=40, description="Số mảnh vỡ bắn ra")
+    color: str = Field("#FFFFFF", pattern=HEX_COLOR, description="Lõi vệt chém")
+    accent_color: str = Field("#FF4A3D", pattern=HEX_COLOR, description="Quầng sáng + mảnh vỡ")
+    enter: HudEase = "none"
+    exit: HudEase = "none"
 
 
 class Visor(_Hud):
@@ -468,7 +512,7 @@ class Visor(_Hud):
     _nfc = field_validator("text", mode="before")(nfc)
 
 
-HudItem = Annotated[Union[Reticle, Panel, Meter, Counter, Popup, Slots, Card, Prompt, Icon, Visor],
+HudItem = Annotated[Union[Reticle, Panel, Meter, Counter, Popup, Slots, Card, Prompt, Icon, Visor, Slash],
                     Field(discriminator="type")]
 
 
@@ -494,7 +538,7 @@ class EditPlan(_Model):
     graphics: list[Graphic] = Field(default_factory=list)
     motion: list[Motion] = Field(default_factory=list)
     hud: list[HudItem] = Field(default_factory=list, description="Giao diện game: reticle, panel, meter, counter, "
-                                                                  "popup, slots, card, prompt, icon, visor")
+                                                                  "popup, slots, card, prompt, icon, visor, slash")
     look: Look = Field(default_factory=Look)
     images: list[ImageOverlay] = Field(default_factory=list)
     audio: list[AudioTrack] = Field(default_factory=list)
@@ -634,6 +678,14 @@ def validate_against_media(plan: EditPlan, base_dir: Path, probe) -> list[str]:
             from .world import check_anchor
 
             problems += check_anchor(plan, base_dir, anchor, a, b, where, probe)
+        sprites = [sp for sp in getattr(item, "sprites", []) if sp] + (
+            [item.sprite] if getattr(item, "sprite", None) else [])
+        for sp in sprites:
+            src = plan.resolve(sp.source, base_dir)
+            if not src.exists():
+                problems.append(f"{where}: sprite lấy từ '{sp.source}' nhưng không có file {src}")
+            elif sp.t > probe(src).duration:
+                problems.append(f"{where}: sprite t={sp.t:.2f}s vượt quá độ dài nguồn {probe(src).duration:.2f}s")
     for i, img in enumerate(plan.images):
         if not plan.resolve(img.path, base_dir).exists():
             problems.append(f"image #{i}: không tìm thấy file {img.path}")

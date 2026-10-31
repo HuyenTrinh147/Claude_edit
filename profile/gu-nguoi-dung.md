@@ -21,3 +21,6 @@ khen/chê (ghi nguyên văn + bài học rút ra). File được commit để nh
 - Thích (2026-10-31, dự án cà pháo): video **như đang chơi game nấu ăn thực tế ảo** — giao diện game kết hợp HUD công
   nghệ (viền mảnh neon, khung ngắm) với chữ thưởng vui; chữ pha thuật ngữ game tiếng Anh (PERFECT!, LEVEL UP, COMBO ×3).
 - Sẵn sàng chờ để có bản chuẩn: chọn "làm đủ tính năng rồi dựng" thay vì bản nháp bằng cách tạm.
+- Duyệt (2026-10-31) bản đề xuất "Game nấu ăn VR · LEVEL 1": mỗi thao tác thật là một mini-game, game chỉ chấm điểm
+  khi có tiếng thật; muốn **mồi series** (Level 2 sau 3 ngày); tên game trên kính "BẾP VR"; đồng ý thêm vệt chém và vật
+  phẩm cắt từ chính video.
