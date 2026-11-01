@@ -74,6 +74,8 @@ def envelope(item, t: float, H: int) -> Env:
     env = Env()
     age, left = t - item.start, item.end - t
     d_in, d_out = ENTER_TIME[item.enter], EXIT_TIME[item.exit]
+    if item.type == "visor":   # full-frame overlay: its own boot animation, and fading out only
+        d_in, d_out = 0.0, EXIT_TIME["fade"] if item.exit != "none" else 0.0
     if d_in and age < d_in:
         p = age / d_in
         if item.enter == "pop":
@@ -251,6 +253,11 @@ class Pen:
     bbox: list[float] | None = None   # canvas-px extent of what was drawn (for keeping items on screen)
     world: World | None = None
 
+    def safe(self, W: int, H: int) -> tuple[float, float, float, float]:
+        """Safe area in canvas px (canvas.safe_area)."""
+        x0, y0, x1, y1 = self.world.plan.canvas.safe_area if self.world else (0.03, 0.03, 0.97, 0.97)
+        return x0 * W, y0 * H, x1 * W, y1 * H
+
     def _grow(self, slot: str, x0: float, y0: float, x1: float, y1: float) -> None:
         if slot.startswith(("fly", "trail", "flash", "glow")) or slot.endswith("~"):
             return
@@ -377,10 +384,11 @@ def _reticle(item: Reticle, pen: Pen, t: float, box, W: int, H: int) -> None:
     color = item.accent_color if locked else item.color
     w, h = bw * grow, bh * grow
     # keep the brackets on screen: clip the box to the safe area and re-centre
+    sx0, sy0, sx1, sy1 = pen.safe(W, H)
     m = 0.035 * W
     cx, cy = pen.origin
-    x0, x1 = max(cx - w / 2, m), min(cx + w / 2, W - m)
-    y0, y1 = max(cy - h / 2, m), min(cy + h / 2, H - m)
+    x0, x1 = max(cx - w / 2, sx0), min(cx + w / 2, sx1)
+    y0, y1 = max(cy - h / 2, sy0), min(cy + h / 2, sy1)
     if x1 - x0 < 40 or y1 - y0 < 40:
         return
     ox, oy, w, h = (x0 + x1) / 2 - cx, (y0 + y1) / 2 - cy, x1 - x0, y1 - y0
@@ -408,12 +416,12 @@ def _reticle(item: Reticle, pen: Pen, t: float, box, W: int, H: int) -> None:
         size = item.size * 0.62
         tw = pen.width(label, size)
         th = size * 1.15
-        if cy + top - th < m:  # no room above: put the tab inside the top edge
+        if cy + top - th < max(m, sy0):  # no room above: put the tab inside the top edge
             top = oy - h / 2 + lw * 2 + th
         pen.shape("tab", 3, round_rect(lx, top - th, lx + tw + size * 0.8, top, 4), fill=color, opacity=0.92)
         pen.text("label", 4, lx + size * 0.4, top - th / 2, label, size=size, color=DARK, align=4, halo=False)
     sub_y = oy + h / 2 + lw * 1.5 + item.size * 0.3
-    if cy + sub_y > H - m:
+    if cy + sub_y > min(H - m, sy1):
         sub_y = oy + h / 2 - lw * 2 - item.size * 0.3
     pen.text("sub", 4, lx, sub_y, sub, size=item.size * 0.46, color=color, align=4, spacing=2,
              opacity=0.95 if locked or int(t * 4) % 2 else 0.55)
@@ -741,7 +749,7 @@ def _icon(item: Icon, pen: Pen, t: float) -> None:
 
 def _visor(item: Visor, pen: Pen, t: float, W: int, H: int) -> None:
     age = t - item.start
-    boot = ease_out(age / 0.45)
+    boot = 1.0 if item.enter == "none" else ease_out(age / 0.45)   # enter none = there from the first frame
     m = item.margin * W
     out = (1 - boot) * 0.05 * W
     arm, lw = 0.075 * W, 5.0
@@ -940,17 +948,16 @@ def _flusher(runs: dict, lines: list[str], edge):
     return flush
 
 
-def _keep_inside(bbox: list[float], W: int, H: int, margin: float = 0.03) -> tuple[float, float]:
-    """Shift that brings a drawn extent inside the safe frame (centred when bigger than the frame)."""
-    m = margin * W
+def _keep_inside(bbox: list[float], safe: tuple[float, float, float, float]) -> tuple[float, float]:
+    """Shift that brings a drawn extent inside the safe area (centred in it when bigger than it)."""
     shift = []
-    for lo, hi, size in ((bbox[0], bbox[2], W), (bbox[1], bbox[3], H)):
-        if hi - lo > size - 2 * m:
-            shift.append(size / 2 - (lo + hi) / 2)
-        elif lo < m:
-            shift.append(m - lo)
-        elif hi > size - m:
-            shift.append(size - m - hi)
+    for lo, hi, a, b in ((bbox[0], bbox[2], safe[0], safe[2]), (bbox[1], bbox[3], safe[1], safe[3])):
+        if hi - lo > b - a:
+            shift.append((a + b) / 2 - (lo + hi) / 2)
+        elif lo < a:
+            shift.append(a - lo)
+        elif hi > b:
+            shift.append(b - hi)
         else:
             shift.append(0.0)
     return shift[0], shift[1]
@@ -1025,7 +1032,7 @@ def hud_events(plan: EditPlan, world: World, fonts: FontBook, default_font: str)
                       world=world)
             draw(item, pen, t, box, k)
             if item.anchor is not None and item.type not in ("reticle", "visor", "slash") and pen.bbox:
-                shift = _keep_inside(pen.bbox, W, H)   # world-anchored UI must not slide off screen
+                shift = _keep_inside(pen.bbox, pen.safe(W, H))   # world-anchored UI stays in the safe area
                 if shift != (0.0, 0.0):
                     pen = Pen(cx + shift[0], cy + shift[1], envelope(item, t, H), fonts, item.font or hud_font,
                               layer, reward_font=reward_font, world=world)

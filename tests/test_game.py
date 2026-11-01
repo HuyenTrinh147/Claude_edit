@@ -300,3 +300,46 @@ def test_slash_and_video_sprites_draw(media, tmp_path):
     assert any("vượt quá độ dài nguồn" in p for p in validate_against_media(bad, tmp_path, probe))
     with pytest.raises(ValidationError, match="đúng một"):
         color_plan(hud=[{"type": "icon", "start": 0, "end": 1}])
+
+
+# ---- fixes found while building the VR edit ------------------------------------------------------------
+
+@needs_ffmpeg
+def test_slow_zoom_keeps_moving_through_a_freeze(media, tmp_path):
+    from PIL import Image, ImageChops
+
+    plan = EditPlan.model_validate({
+        "sources": {"main": str(media["land"])}, "canvas": {"width": 320, "height": 320, "fps": 25},
+        "clips": [{"source": "main", "start": 0.0, "end": 1.0, "zoom": "in", "zoom_amount": 0.3, "freeze": 1.0}]})
+    out = render(plan, tmp_path / "z.mp4", base_dir=tmp_path, font="DejaVu Sans", work_dir=tmp_path / "w").output
+    frames = []
+    for t in (1.1, 1.9):
+        f = tmp_path / f"f{t}.png"
+        ffmpeg("-ss", str(t), "-i", str(out), "-frames:v", "1", str(f))
+        frames.append(Image.open(f).convert("L"))
+    assert ImageChops.difference(*frames).getbbox() is not None   # still zooming while the picture is held
+
+
+def test_visor_enter_none_is_fully_there_on_frame_one():
+    plan = color_plan(hud=[{"type": "visor", "start": 0, "end": 1.5, "text": "BẾP VR", "enter": "none"}])
+    lines = hud_events(plan, World(plan, None, 30), FontBook(Path("assets/fonts")), "DejaVu Sans")
+    title = [ln for ln in lines if "BẾP VR" in ln]
+    assert title and ",0:00:00.00," in title[0] and r"\1a&H00&" in title[0]
+
+
+def test_anchored_items_stay_inside_the_safe_area(tmp_path):
+    video = tmp_path / "v.mp4"
+    video.write_bytes(b"")
+    Track("cup", str(video), [TrackPoint(0, 0.95, 0.5, 0.1, 0.1), TrackPoint(2, 0.95, 0.5, 0.1, 0.1)]).save(
+        track_path(tmp_path, "cup"))
+    plan = EditPlan.model_validate({
+        "canvas": {"width": 1000, "height": 1000, "fps": 20, "safe_area": [0.05, 0.1, 0.85, 0.8]},
+        "clips": [{"source": str(video), "start": 0, "end": 2}],
+        "hud": [{"type": "prompt", "start": 0, "end": 2, "text": "HOLD TO SEAL", "enter": "none",
+                 "anchor": {"track": "cup", "point": "right"}}]})
+    lines = hud_events(plan, World(plan, tmp_path, 20, lambda p: FakeInfo(1000, 1000)), FontBook(Path("assets/fonts")),
+                       "DejaVu Sans")
+    xs = [float(x) for ln in lines for x in re.findall(r"\\pos\((-?[\d.]+),", ln)]
+    xs += [float(x) for ln in lines if r"\p1}" in ln
+           for x in re.findall(r"(-?[\d.]+) -?[\d.]+", ln.split(r"\p1}")[1].split("{")[0])]
+    assert xs and max(xs) <= 851

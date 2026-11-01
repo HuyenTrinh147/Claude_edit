@@ -65,11 +65,18 @@ class Canvas(_Model):
     height: int = Field(1920, ge=144, le=4096, description="Chiều cao khung hình (px), số chẵn")
     fps: int = Field(30, ge=12, le=60)
     background: str = Field("#000000", pattern=HEX_COLOR, description="Màu nền khi fit=contain")
+    safe_area: tuple[float, float, float, float] = Field(
+        (0.03, 0.03, 0.97, 0.97),
+        description="Vùng an toàn [x0, y0, x1, y1] (tỉ lệ khung) mà HUD bám vật không được vượt ra — TikTok/Reels nên "
+                    "dùng [0.05, 0.1, 0.85, 0.8] để né cột nút bên phải và chú thích phía dưới")
 
     @model_validator(mode="after")
     def _even(self) -> "Canvas":
         if self.width % 2 or self.height % 2:
             raise ValueError("canvas width/height phải là số chẵn (yêu cầu của H.264 yuv420p)")
+        x0, y0, x1, y1 = self.safe_area
+        if not (0 <= x0 < x1 <= 1 and 0 <= y0 < y1 <= 1):
+            raise ValueError(f"safe_area {list(self.safe_area)} phải là [x0, y0, x1, y1] với 0 ≤ x0 < x1 ≤ 1")
         return self
 
 

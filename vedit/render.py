@@ -255,12 +255,13 @@ def build_command(
             graph.append(f"{pre},scale={W}:{H}:force_original_aspect_ratio=increase,"
                          f"crop={W}:{H}:(iw-{W})*{clip.focus_x:g}:(ih-{H})*{clip.focus_y:g}[c{i}]")
 
-        post = []
+        # hold the last frame first (freeze + 1 s of padding), then the Ken Burns camera, so a slow zoom keeps
+        # moving across a freeze frame (world.clip_zoom assumes exactly this)
+        post = ["setsar=1", "format=yuv420p", f"tpad=stop_mode=clone:stop_duration={_num(clip.freeze + 1)}"]
         if clip.zoom != "none":
             a = clip.zoom_amount
             post.append(camera(f"1+{a:g}*in/{n}" if clip.zoom == "in" else f"1+{a:g}-{a:g}*in/{n}"))
-        post += ["setsar=1", "format=yuv420p", f"tpad=stop_mode=clone:stop_duration={_num(clip.freeze + 1)}",
-                 f"trim=end_frame={n}", "setpts=PTS-STARTPTS", f"settb=1/{fps}"]
+        post += [f"trim=end_frame={n}", "setpts=PTS-STARTPTS", f"settb=1/{fps}"]
         graph.append(f"[c{i}]{','.join(post)}[v{i}]")
 
         if has_audio:
