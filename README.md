@@ -159,7 +159,10 @@ Một file JSON mô tả toàn bộ video. Ví dụ rút gọn (`vedit schema pl
   - `look`: tông màu `warm_food`, `bright_clean`, `film`, `moody`, `vivid`, `bw` + vignette, hạt film;
   - âm thanh hiệu ứng tổng hợp không cần file: `sfx:pop|click|ding|sparkle|whoosh|thud|rise` + âm 8-bit cho game
     `pickup|coin|lock|combo|levelup|slash|zip|tick|complete|buzz`, đổi cao độ bằng `pitch`;
-  - `Clip.freeze`: dừng hình ở khung cuối clip.
+  - `Clip.freeze`: dừng hình ở khung cuối clip;
+  - **SFX thật** từ bộ âm thanh của bạn: `vedit sfx add <thư mục | file.zip | link Google Drive> --name <tên bộ>` rồi
+    `vedit sfx list whoosh` — in đường dẫn, loại và mốc đỉnh tiếng để đặt đúng khung hình (file âm thanh không lên git,
+    chỉ mục `assets/sfx/<bộ>/index.json` thì có).
 - **Giao diện game bám vật** (chi tiết: `knowledge/techniques/giao-dien-game-hud-bam-vat-cho-video.md`):
   `vedit track <dự án> <tên> --at <giây> --box x,y,w,h` bám theo một vật (OpenCV, `pip install -e ".[track]"`), rồi
   `hud` vẽ khung kính VR, khung ngắm khoá mục tiêu, bảng nhiệm vụ tick dần, thanh đo có vùng chuẩn, điểm số / đồng hồ

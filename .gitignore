@@ -17,6 +17,11 @@ gdrive_token.json
 projects/*
 !projects/.gitkeep
 
+# bộ SFX nhập bằng `vedit sfx add`: chỉ commit chỉ mục (nguồn + danh sách), không commit file âm thanh
+assets/sfx/**/*
+!assets/sfx/*/
+!assets/sfx/*/index.json
+
 # tài nguyên media của bạn (nhạc, font, logo) — bỏ dòng dưới nếu muốn commit
 assets/**/*.mp3
 assets/**/*.wav

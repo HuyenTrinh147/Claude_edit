@@ -41,7 +41,8 @@ Trả về tóm tắt mỗi hướng trong 2–3 dòng.
    texts/captions/graphics/hud/motion/audio = giây TIMELINE (mỗi clip chiếm (end-start)/speed + freeze giây; transition
    làm 2 clip chồng lấn). Canvas theo nền tảng (TikTok/Reels/Shorts 1080x1920). Âm thanh: file thật trong `assets/` hoặc
    SFX tổng hợp `sfx:<tên>` (`pop click ding sparkle whoosh thud rise` + 8-bit `pickup coin lock combo levelup slash
-   zip tick complete buzz`, có `pitch` nửa cung). Có transcript → captions với mốc đã quy đổi theo đoạn cắt.
+   zip tick complete buzz`, có `pitch` nửa cung) hoặc SFX THẬT trong thư viện: `vedit sfx list <từ khoá>` (đường dẫn +
+   mốc đỉnh tiếng → `start` = mốc khung hình − đỉnh). Có transcript → captions với mốc đã quy đổi theo đoạn cắt.
    Đo vị trí chữ/đồ hoạ bằng `vedit frame <slug> <giây> --grid`.
    **Hướng "game" (HUD, AR/VR)**: đọc `vedit kb show techniques/giao-dien-game-hud-bam-vat-cho-video`. Đồ hoạ bám vật
    cần track trước: `vedit track <slug> <tên> --at <giây nguồn> --box x,y,w,h [--until ..] [--back ..]`, Read ảnh

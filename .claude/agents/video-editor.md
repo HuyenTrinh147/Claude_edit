@@ -29,6 +29,7 @@ Quy trình:
      Track sai → `vedit track` lại với hộp sát hơn (tự dừng ở điểm cắt cảnh; mỗi cảnh một track). Tra cứu bộ HUD:
      `vedit kb show techniques/giao-dien-game-hud-bam-vat-cho-video`;
    - âm thanh: `ffmpeg -i projects/<slug>/renders/preview.mp4 -af ebur128=peak=true -f null -` (true peak ≤ −1 dBTP);
+     SFX thật thay cho bản tổng hợp khi hợp hơn: `vedit sfx list <từ khoá>` (đặt `start` = mốc − đỉnh tiếng);
    - đối chiếu từng luật cứng.
 4. Sửa và render preview lại (thường 1–3 vòng; đừng sửa vụn vặt vô hạn).
 5. Nếu được giao danh sách lỗi của agent phản biện: sửa từng mục, hoặc nói rõ vì sao giữ nguyên.

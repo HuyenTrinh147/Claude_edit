@@ -59,6 +59,10 @@ Màu: `color` (nền nhãn/huy hiệu), `text_color`, `accent_color` (chấm, đ
 `{"path": "sfx:pop", "role": "sfx", "start": 2.0, "volume": 0.35}` — `pop` (chữ/đồ hoạ bật ra), `click`,
 `ding` (thành phẩm, ý chính), `sparkle` (lấp lánh), `whoosh` (chuyển cảnh, chữ trượt), `thud` (va chạm nặng),
 `rise` (dồn nén trước điểm nhấn). Video ASMR: volume 0.15–0.35 để không át tiếng thật.
+**SFX thật từ thư viện** (bộ người dùng đưa vào): `vedit sfx add <thư mục | .zip | link Drive> --name <tên bộ>` rồi
+`vedit sfx list <từ khoá>` (hoặc `--category whoosh|impact|riser|pop|click|ding|magic|glitch|camera|cash|fail|funny|crowd|game`)
+→ đường dẫn file + `đỉnh tiếng @x s`. Đặt `audio.start = mốc khung hình − x` để đỉnh tiếng rơi đúng khung. Ưu tiên SFX
+thật khi hợp phong cách (whoosh, impact, riser nghe "đắt" hơn bản tổng hợp); file thật không có thì dùng `sfx:<tên>`.
 Âm 8-bit cho phong cách game: `pickup`, `coin`, `lock`, `combo`, `levelup`, `slash`, `zip`, `tick`, `complete`, `buzz`.
 `pitch` (nửa cung, −24..24) đổi cao độ — chuỗi combo cao dần 0, 2, 4.
 

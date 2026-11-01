@@ -184,7 +184,24 @@ def list_assets_tool(settings: Settings) -> list:
                     "(music_direction) thay vì thêm track audio.")
         return _json(items)
 
-    return [list_assets]
+    @beta_tool
+    def search_sfx(query: str = "", category: str | None = None, limit: int = 20) -> str:
+        """Tìm âm thanh hiệu ứng THẬT trong thư viện SFX (bộ người dùng đã nhập bằng `vedit sfx add`). Mỗi kết quả có
+        đường dẫn (dùng làm audio.path), loại, độ dài và mốc đỉnh tiếng `hit`: đặt audio.start = mốc khung hình - hit
+        để đỉnh tiếng rơi đúng khung. Không có kết quả thì dùng SFX tổng hợp 'sfx:<tên>'.
+
+        Args:
+            query: Từ khoá theo tên file (vd 'whoosh', 'ding', 'cash', 'vỗ tay').
+            category: whoosh, impact, riser, pop, click, ding, magic, glitch, camera, cash, fail, funny, crowd, game,
+                scratch, other.
+            limit: Số kết quả tối đa.
+        """
+        from ..sfxlib import describe, search
+
+        hits = search(settings.assets_dir / "sfx", query, category, limit)
+        return "\n".join(describe(p, s) for p, s in hits) or "Không có SFX thật nào khớp (thư viện trống hoặc sai từ khoá)."
+
+    return [list_assets, search_sfx]
 
 
 def frame_tools(project: Project) -> list:

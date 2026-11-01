@@ -67,6 +67,8 @@ trên hàng sao), `icon.sprite`. Hộp bao sát vật; `pixels` 12–16 cho vậ
 SFX tổng hợp kiểu 8-bit (không cần file): `sfx:pickup` (nhặt đồ), `sfx:coin`, `sfx:lock` (khoá mục tiêu), `sfx:combo`,
 `sfx:levelup`, `sfx:slash` (dao cắt), `sfx:zip` (vật bay vào túi), `sfx:tick` (đồng hồ), `sfx:complete` (xong nhiệm
 vụ), `sfx:buzz` (sai/hết giờ) — cùng `pop`, `click`, `ding`, `sparkle`, `whoosh`, `thud`, `rise`.
+SFX **thật** (bộ người dùng nhập, vd "BASIC SFX QUẠ HD"): `vedit sfx list <từ khoá>` / `--category whoosh|impact|ding|…`
+in đường dẫn + mốc đỉnh tiếng `hit` → `"path": "<đường dẫn>", "start": <mốc khung hình> - hit`.
 `pitch` (nửa cung) cho chuỗi cao dần: combo 1-2-3 = pitch 0, 2, 4 (hoặc 0, 4, 7). Giữ tiếng thật làm chính; SFX
 `volume` 0.3–0.6, đặt đúng khung của hành động; không tiếng nào y hệt quá 3 lần.
 

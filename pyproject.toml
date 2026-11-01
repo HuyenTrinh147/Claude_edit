@@ -15,6 +15,7 @@ dependencies = [
     "yt-dlp>=2025.1.1",
     "pillow>=10.1",     # measuring text to size stickers / callouts
     "fonttools>=4.40",  # reading font metrics so `size` looks the same in every font
+    "gdown>=5.2",       # Google Drive folders (SFX packs, footage) when the network allows drive.google.com
 ]
 
 [project.optional-dependencies]

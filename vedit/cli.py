@@ -198,6 +198,35 @@ def cmd_track(args, settings) -> None:
     print(f"✓ {describe(track)}\n  {out}\n  kiểm tra bằng mắt: {sheet}")
 
 
+def cmd_sfx(args, settings) -> None:
+    """Real sound-effect packs: import, list, search."""
+    from .sfxlib import SfxError, describe, import_pack, library, missing_packs, search
+
+    sfx_dir = settings.assets_dir / "sfx"
+    try:
+        if args.sfx_cmd == "add":
+            print(f"• Nhập {len(args.source)} nguồn...")
+            pack_dir, sounds = import_pack(args.source, sfx_dir, args.name)
+            cats: dict[str, int] = {}
+            for s in sounds:
+                cats[s.category] = cats.get(s.category, 0) + 1
+            print(f"✓ Bộ '{pack_dir.name}': {len(sounds)} âm thanh → {pack_dir}\n  "
+                  + ", ".join(f"{k} {v}" for k, v in sorted(cats.items(), key=lambda kv: -kv[1])))
+            return
+        for pack, src in missing_packs(sfx_dir):
+            print(f"! Bộ '{pack}' có chỉ mục nhưng chưa có file (workspace mới) — nhập lại: "
+                  f"vedit sfx add {' '.join(src)} --name {pack}")
+        hits = search(sfx_dir, " ".join(args.query), args.category, args.limit) if (args.query or args.category) \
+            else library(sfx_dir)[: args.limit]
+        if not hits:
+            print("Chưa có SFX nào khớp. Nhập bộ SFX: vedit sfx add <thư mục | file.zip | link Drive> --name <tên>")
+            return
+        for pack_dir, sound in hits:
+            print(describe(pack_dir, sound))
+    except SfxError as e:
+        raise SystemExit(f"✗ {e}") from None
+
+
 def cmd_note(args, settings) -> None:
     from .project import Project
 
@@ -466,6 +495,18 @@ def build_parser() -> argparse.ArgumentParser:
     tk.add_argument("--source", help="File video khác video của dự án")
     tk.add_argument("--smooth", type=float, default=0.5, help="Làm mượt 0..1 (mặc định 0.5)")
     tk.set_defaults(func=cmd_track)
+
+    sx = sub.add_parser("sfx", help="Thư viện SFX thật (bộ âm thanh tải về / tải lên): nhập, liệt kê, tìm")
+    sxsub = sx.add_subparsers(dest="sfx_cmd", required=True)
+    sxa = sxsub.add_parser("add", help="Nhập bộ SFX từ thư mục, file .zip, file âm thanh/video hoặc link Google Drive")
+    sxa.add_argument("source", nargs="+")
+    sxa.add_argument("--name", help="Tên bộ (mặc định theo tên thư mục / file)")
+    sxl = sxsub.add_parser("list", help="Liệt kê / tìm: vedit sfx list whoosh  |  vedit sfx list --category impact")
+    sxl.add_argument("query", nargs="*")
+    sxl.add_argument("--category", help="whoosh, impact, riser, pop, click, ding, magic, glitch, camera, cash, fail, "
+                                        "funny, crowd, game, scratch, other")
+    sxl.add_argument("--limit", type=int, default=40)
+    sx.set_defaults(func=cmd_sfx)
 
     nt = sub.add_parser("note", help="Ghi quyết định / phản hồi vào nhật ký dự án (project.md)")
     nt.add_argument("project")
