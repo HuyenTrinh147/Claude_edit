@@ -296,6 +296,7 @@ def cmd_render(args, settings) -> None:
                     fonts_dir=settings.fonts_dir, work_dir=renders / ".work", on_progress=progress)
     progress.finish()
     print(f"✓ {result.output} ({result.duration:.2f}s, {result.elapsed:.0f}s render)"
+          + (f"\n  âm thanh: true peak {result.true_peak:.1f} dBTP" if result.true_peak is not None else "")
           + (f"\n  thumbnail: {result.thumbnail}" if result.thumbnail else ""))
 
 

@@ -4,6 +4,7 @@ import subprocess
 
 import pytest
 
+from conftest import ffmpeg, needs_ffmpeg
 from vedit.edl import EditPlan
 from vedit.media import probe
 from vedit.render import _ass_color, _ass_text, _ass_time, build_ass, build_command, frame_layout, render
@@ -113,3 +114,17 @@ def test_odd_length_clips_keep_audio_and_video_in_sync(media, tmp_path):
     streams = {s["codec_type"]: s for s in json.loads(proc.stdout)["streams"]}
     assert int(streams["video"]["nb_frames"]) == frame_layout(p, 30)[2] == round(4 * 1.35 * 30)
     assert abs(float(streams["video"]["duration"]) - float(streams["audio"]["duration"])) < 1 / 30
+
+
+@needs_ffmpeg
+def test_audio_is_encoded_from_the_master_under_the_true_peak_ceiling(tmp_path):
+    from vedit.render import encode_audio, true_peak
+
+    master = tmp_path / "master.mkv"   # crisp synthetic clicks right under full scale, like kitchen hits
+    ffmpeg("-f", "lavfi", "-i", "aevalsrc='0.97*sin(2*PI*3000*t)*exp(-mod(t,0.25)*30)':s=48000:d=2",
+           "-c:a", "pcm_s24le", str(master))
+    raw = tmp_path / "raw.m4a"
+    encode_audio(master, raw, "128k", ceiling=None)
+    assert true_peak(raw) > -1.0                     # the encoder overshoots...
+    fixed = tmp_path / "fixed.m4a"
+    assert encode_audio(master, fixed, "128k") <= -1.0   # ...so the gain comes down until it does not

@@ -37,6 +37,38 @@ class RenderResult:
     thumbnail: Path | None
     command: list[str]
     elapsed: float
+    true_peak: float | None = None   # dBTP of the encoded audio
+
+
+TRUE_PEAK_MAX = -1.0  # dBTP ceiling for exports (TikTok / YouTube recommendation)
+
+
+def true_peak(path: Path) -> float | None:
+    """True peak (dBTP) of a file's audio, measured after encoding (ffmpeg ebur128)."""
+    proc = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(path), "-vn", "-af", "ebur128=peak=true",
+                           "-f", "null", "-"], capture_output=True, text=True, errors="replace")
+    found = re.findall(r"Peak:\s+(-?[\d.]+|-inf) dBFS", proc.stderr)
+    if not found or found[-1] == "-inf":
+        return None
+    return float(found[-1])
+
+
+def encode_audio(master: Path, out: Path, bitrate: str, *, ceiling: float | None = TRUE_PEAK_MAX) -> float | None:
+    """Encode the lossless master mix to AAC. Lossy encoders push crisp transients past the limiter's ceiling by a
+    dB or more (chaotically), so measure the encoded file and, while it breaks `ceiling`, re-encode FROM THE
+    MASTER with less gain — never AAC on top of AAC. Returns the final true peak."""
+    gain, margin, tp = 0.0, 0.3, None
+    for _ in range(4):
+        cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(master), "-map", "0:a:0", "-vn"]
+        if gain:
+            cmd += ["-af", f"volume={gain:.2f}dB"]
+        subprocess.run(cmd + ["-c:a", "aac", "-b:a", bitrate, "-ar", "48000", str(out)], check=True)
+        tp = true_peak(out)
+        if ceiling is None or tp is None or tp < ceiling - 0.05:   # ebur128 reports 0.1 dB steps: stay below
+            break
+        gain += ceiling - margin - tp
+        margin += 0.3
+    return tp
 
 
 def _even(x: float) -> int:
@@ -195,8 +227,10 @@ def build_command(
     preview: bool = False,
     font: str = "Inter",
     fonts_dir: Path | None = None,
+    pcm_audio: bool = False,
 ) -> list[str]:
-    """Build the ffmpeg argv. Writes the ASS subtitle file into work_dir when needed."""
+    """Build the ffmpeg argv. Writes the ASS subtitle file into work_dir when needed. `pcm_audio` keeps the mix
+    lossless (for a .mkv master that render() encodes and muxes afterwards)."""
     canvas = plan.canvas
     scale = 0.5 if preview else 1.0
     W, H = _even(canvas.width * scale), _even(canvas.height * scale)
@@ -384,7 +418,8 @@ def build_command(
         mixed = "mixed"
     final_audio = []
     if plan.export.normalize_audio and any_audio:  # loudnorm on pure digital silence outputs NaN
-        final_audio += ["loudnorm=I=-14:TP=-1.5:LRA=11", AUDIO_FMT]
+        # TP -2: AAC encoding adds up to ~1 dB of overshoot on crisp transients; render() checks the encoded file
+        final_audio += ["loudnorm=I=-14:TP=-2:LRA=11", AUDIO_FMT]
     final_audio += [f"atrim=end_sample={samples(total_frames)}"]
     graph.append(f"[{mixed}]{','.join(final_audio)}[aout]")
 
@@ -397,8 +432,9 @@ def build_command(
         "-filter_complex", ";\n".join(graph),
         "-map", "[vout]", "-map", "[aout]",
         "-c:v", "libx264", "-preset", preset, "-crf", str(crf), "-pix_fmt", "yuv420p", "-r", str(fps),
-        "-c:a", "aac", "-b:a", "128k" if preview else ex.audio_bitrate, "-ar", "48000",
-        "-movflags", "+faststart", "-frames:v", str(total_frames),
+        *(["-c:a", "pcm_s24le", "-ar", "48000"] if pcm_audio else
+          ["-c:a", "aac", "-b:a", "128k" if preview else ex.audio_bitrate, "-ar", "48000", "-movflags", "+faststart"]),
+        "-frames:v", str(total_frames),
         str(output.resolve()),
     ]
 
@@ -435,8 +471,9 @@ def render(
     work_dir = (work_dir or output.parent / ".work").resolve()
     work_dir.mkdir(parents=True, exist_ok=True)
     rendering = output.with_name(f".{output.stem}.rendering{output.suffix}")  # keep the old file until done
-    cmd = build_command(plan, rendering, base_dir=Path(base_dir).resolve(), work_dir=work_dir, preview=preview,
-                        font=font, fonts_dir=fonts_dir)
+    master = work_dir / f"{output.stem}.master.mkv"   # video + lossless mix; the AAC is made from it afterwards
+    cmd = build_command(plan, master, base_dir=Path(base_dir).resolve(), work_dir=work_dir, preview=preview,
+                        font=font, fonts_dir=fonts_dir, pcm_audio=True)
     (work_dir / ("preview_cmd.txt" if preview else "render_cmd.txt")).write_text(
         "\n".join(cmd), encoding="utf-8")
 
@@ -454,10 +491,23 @@ def render(
                     pass
         proc.wait()
     if proc.returncode != 0:
-        rendering.unlink(missing_ok=True)
+        master.unlink(missing_ok=True)
         tail = "\n".join(stderr_path.read_text(encoding="utf-8", errors="replace").strip().splitlines()[-30:])
         raise RenderError(f"ffmpeg lỗi (mã {proc.returncode}). Log: {stderr_path}\n{tail}")
 
+    audio = work_dir / f"{output.stem}.audio.m4a"
+    try:
+        peak = encode_audio(master, audio, "128k" if preview else plan.export.audio_bitrate,
+                            ceiling=TRUE_PEAK_MAX if plan.export.normalize_audio else None)
+        subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(master), "-i", str(audio),
+                        "-map", "0:v:0", "-map", "1:a:0", "-c", "copy", "-movflags", "+faststart", str(rendering)],
+                       check=True)
+    except subprocess.CalledProcessError as exc:
+        rendering.unlink(missing_ok=True)
+        raise RenderError(f"ffmpeg lỗi khi mã hoá / ghép âm thanh: {exc}") from None
+    finally:
+        master.unlink(missing_ok=True)
+        audio.unlink(missing_ok=True)
     if not preview:
         archive_previous(output)
     rendering.replace(output)
@@ -469,4 +519,4 @@ def render(
         thumbnail = extract_frame(output, min(t, max(total - 0.1, 0)), output.with_suffix(".jpg"),
                                   width=plan.canvas.width)
     return RenderResult(output=output, duration=probe(output).duration, preview=preview, thumbnail=thumbnail,
-                        command=cmd, elapsed=time.time() - started)
+                        command=cmd, elapsed=time.time() - started, true_peak=peak)
