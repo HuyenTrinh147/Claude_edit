@@ -316,9 +316,12 @@ class _Hud(_Model):
     anchor: Anchor | None = Field(None, description="Bám theo vật đã track (thay cho x/y)")
     enter: HudEase = Field("pop", description="Vào: pop (bật nảy), slide (trượt lên), stamp (đập xuống), fade, none")
     exit: HudEase = Field("fade", description="Ra: fade, pop (thu nhỏ), slide (trượt lên), stamp, none")
-    color: str = Field("#3CF2FF", pattern=HEX_COLOR, description="Màu neon chính (viền, chữ HUD)")
-    accent_color: str = Field("#FFD23F", pattern=HEX_COLOR, description="Màu thưởng / khoá / tick / vùng chuẩn")
-    text_color: str = Field("#FFFFFF", pattern=HEX_COLOR)
+    color: str | None = Field(None, pattern=HEX_COLOR, description="Màu chính (viền, nhãn, khung ngắm); bỏ trống = "
+                                                                   "màu mặc định của hud_theme (neon: cyan, pastel: xanh trời)")
+    accent_color: str | None = Field(None, pattern=HEX_COLOR, description="Màu thưởng / khoá / tick / vùng chuẩn; bỏ "
+                                                                         "trống = mặc định theo hud_theme")
+    text_color: str | None = Field(None, pattern=HEX_COLOR, description="Màu chữ; bỏ trống = trắng (neon) / tím than "
+                                                                       "(pastel)")
     size: int = Field(44, ge=14, le=240, description="Cỡ chữ chính (px canvas)")
     font: str | None = Field(None, description="Font chữ HUD, vd 'Chakra Petch'; mặc định theo cấu hình")
 
@@ -546,6 +549,10 @@ class EditPlan(_Model):
     captions: Captions | None = None
     graphics: list[Graphic] = Field(default_factory=list)
     motion: list[Motion] = Field(default_factory=list)
+    hud_theme: Literal["neon", "pastel"] = Field(
+        "neon", description="Phong cách giao diện game: neon = viền mảnh phát sáng trên kính tối (sci-fi); pastel = thẻ "
+                            "kem, viền + bóng tím than kiểu sticker, kẹo hồng / mint / lavender / vàng bơ / xanh trời, "
+                            "font tròn (Baloo 2, Paytone One) — tươi tắn, dễ thương")
     hud: list[HudItem] = Field(default_factory=list, description="Giao diện game: reticle, panel, meter, counter, "
                                                                   "popup, slots, card, prompt, icon, visor, slash")
     look: Look = Field(default_factory=Look)

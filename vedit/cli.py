@@ -227,6 +227,20 @@ def cmd_sfx(args, settings) -> None:
         raise SystemExit(f"✗ {e}") from None
 
 
+def cmd_music(args, settings) -> None:
+    """Generate a procedural music bed (no files, no licences) to use as an `audio` track with role music."""
+    from .musicgen import make_bed
+    from .project import Project
+
+    out = Path(args.out).expanduser() if args.out else None
+    if out is None:
+        project = Project.open(settings, args.project)
+        out = project.dir / "audio" / f"bed-{args.style}.wav"
+    path = make_bed(out, args.duration, args.style, args.bpm, args.seed)
+    print(f"✓ {path}  ({args.duration:.1f}s, {args.style}) — thêm vào EditPlan: "
+          f'{{"path": "{path}", "role": "music", "volume": 0.3, "duck": false, "loop": false}}')
+
+
 def cmd_note(args, settings) -> None:
     from .project import Project
 
@@ -508,6 +522,15 @@ def build_parser() -> argparse.ArgumentParser:
                                         "funny, crowd, game, scratch, other")
     sxl.add_argument("--limit", type=int, default=40)
     sx.set_defaults(func=cmd_sfx)
+
+    mu = sub.add_parser("music", help="Tạo nhạc nền ngắn bằng code (không file, không bản quyền): hộp nhạc / kalimba nhẹ")
+    mu.add_argument("project", help="Tên dự án (file lưu ở <dự án>/audio/) — bỏ qua nếu dùng --out")
+    mu.add_argument("--duration", type=float, required=True, help="Độ dài giây (thường = độ dài video)")
+    mu.add_argument("--style", choices=["pastel"], default="pastel")
+    mu.add_argument("--bpm", type=float, help="Mặc định tự chọn để nhạc dài đúng số ô nhịp nguyên")
+    mu.add_argument("--seed", type=int, default=7)
+    mu.add_argument("--out", help="File .wav xuất ra")
+    mu.set_defaults(func=cmd_music)
 
     nt = sub.add_parser("note", help="Ghi quyết định / phản hồi vào nhật ký dự án (project.md)")
     nt.add_argument("project")

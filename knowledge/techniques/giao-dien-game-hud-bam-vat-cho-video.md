@@ -12,6 +12,19 @@ Dùng khi hướng dựng là "video như đang chơi game" (game nấu ăn VR/A
 phong cách**, không phải hiệu ứng rải vào mọi video. Mỗi đồ hoạ phải là **một luật chơi gắn với một hành động thật + một
 tiếng thật** (rót nước → thanh đo đầy; cắt ớt đúng nhịp → PERFECT CUT!; thả cà → COMBO ×3; đậy nắp → SEAL).
 
+## 0. Phong cách giao diện — `hud_theme`
+`"hud_theme": "neon"` (mặc định): viền mảnh phát sáng trên kính tối, sci-fi; font Chakra Petch + Bungee.
+`"hud_theme": "pastel"`: **tươi tắn, dễ thương** — thẻ kem pha tông màu của từng mục, viền + bóng tím than kiểu sticker,
+kẹo hồng / mint / lavender / vàng bơ / xanh trời, font tròn **Baloo 2** (HUD) + **Paytone One** (chữ thưởng). Người dùng
+(2026-11-02) thích pastel hơn neon cho đồ hoạ.
+- Màu `color` / `accent_color` / `text_color` của từng mục **bỏ trống = mặc định của theme** (neon: cyan / vàng / trắng;
+  pastel: xanh trời / vàng bơ / tím than). Đặt `color` khác nhau theo vai để thẻ có tông riêng: điểm = vàng bơ
+  `#FFD66E`, combo = hồng `#FF9DBA`, nhiệm vụ / kính = lavender `#C9B3FF`, đồng hồ = mint `#8DE4B2`, thẻ qua màn = hồng.
+- Bảng màu pastel: xanh trời `#8CCBFF`, vàng bơ `#FFD66E`, mint `#8DE4B2`, hồng dâu `#FF8FAE`/`#FF9DBA`, lavender `#C9B3FF`,
+  đào `#FFB07A`; kem `#FFF8EE`; mực tím than `#4E3A68`.
+- Pastel mờ trên nền sáng → chữ HUD luôn màu mực có viền kem, đường mảnh đổi sang mực, khung ngắm có viền mực. Font
+  Baloo 2 / Paytone One **không có** ký hiệu ▶ ★ ✓ (dùng » × · thay) — `vedit validate` báo nếu thiếu glyph.
+
 ## 1. Bám vật (tracking) — `vedit track`
 ```
 vedit frame <dự án> <giây nguồn> --grid          # đo hộp quanh vật: x,y (góc trên-trái), w,h theo tỉ lệ 0..1
@@ -71,6 +84,16 @@ SFX **thật** (bộ người dùng nhập, vd "BASIC SFX QUẠ HD"): `vedit sfx
 in đường dẫn + mốc đỉnh tiếng `hit` → `"path": "<đường dẫn>", "start": <mốc khung hình> - hit`.
 `pitch` (nửa cung) cho chuỗi cao dần: combo 1-2-3 = pitch 0, 2, 4 (hoặc 0, 4, 7). Giữ tiếng thật làm chính; SFX
 `volume` 0.3–0.6, đặt đúng khung của hành động; không tiếng nào y hệt quá 3 lần.
+
+## 4b. Nhạc nền & độ dày âm thanh
+Người dùng muốn **âm thanh dày hơn** (2026-11-02): mọi sự kiện HUD đều có tiếng (tick khi tick nhiệm vụ, zip khi vật bay
+vào túi, combo cao dần ×4–×7 bằng `pitch`, khoá mục tiêu = `lock`, đếm lùi = `tick` mỗi giây…), tiếng game ≈ +2 dB so với
+tiếng thật (vẫn kêu SAU tiếng thật 10–20 ms), và nhạc nền nhẹ:
+`vedit music <dự án> --duration <giây>` → `<dự án>/audio/bed-pastel.wav` (hộp nhạc / kalimba, 8 ô nhịp vừa đúng độ dài
+video, ô cuối kết bằng chuông + hợp âm giữ — rơi đúng lúc thẻ qua màn). Thêm vào plan:
+`{"path": "audio/bed-pastel.wav", "role": "music", "volume": 0.075, "duck": false, "loop": false, "fade_in": 0.4,
+"fade_out": 1.6}` — không duck (nhiều SFX sẽ làm nhạc "thở" liên tục). Cân bằng đã dùng (đo trước loudnorm):
+tiếng thật −36,8 LUFS, tiếng game −34, nhạc −41 → bản xuất −15,4 LUFS.
 
 ## 5. Dừng hình — `Clip.freeze`
 `"freeze": 1.2` giữ khung cuối của clip thêm 1.2s (tiếng gốc im, zoom chậm vẫn chạy) — chỗ cho `card` hoàn thành

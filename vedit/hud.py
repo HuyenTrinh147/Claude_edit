@@ -16,9 +16,36 @@ from .edl import (Card, Counter, EditPlan, Icon, Meter, Panel, Popup, Prompt, Re
                   Visor)
 from .world import World
 
-HUD_FONT = "Chakra Petch"   # techy HUD labels (bundled, Vietnamese OK)
-REWARD_FONT = "Bungee"      # chunky reward text (bundled, Vietnamese OK)
 DARK = "#07121C"
+CREAM = "#FFF8EE"
+
+
+@dataclass(frozen=True)
+class Theme:
+    """Look of the HUD. neon = thin glowing lines on dark glass; pastel (`sticker`) = cream cards with chunky ink
+    outlines and an offset shadow, candy colours, round fonts."""
+
+    name: str
+    hud_font: str
+    reward_font: str
+    ink: str                      # dark marks, outlines of stickers
+    back: str                     # fill behind cards / panels / meters
+    back_opacity: float | None    # None = the component's own glass opacity
+    halo: str                     # halo colour around floating text
+    halo_opacity: float
+    pop_outline: str              # outline of reward text and stars
+    primary: str                  # default `color`
+    accent: str                   # default `accent_color`
+    text: str                     # default `text_color`
+    sticker: bool
+    soften: float                 # blend pixel-art sprites toward cream (0 = untouched)
+
+
+NEON = Theme("neon", "Chakra Petch", "Bungee", DARK, DARK, None, DARK, 0.55, "#1A0F2E", "#3CF2FF", "#FFD23F",
+             "#FFFFFF", False, 0.0)
+PASTEL = Theme("pastel", "Baloo 2", "Paytone One", "#4E3A68", CREAM, 0.92, CREAM, 0.9, "#4E3A68", "#8CCBFF", "#FFD66E",
+               "#4E3A68", True, 0.16)
+THEMES = {"neon": NEON, "pastel": PASTEL}
 BASE_LAYER = 20
 LAYERS_PER_ITEM = 10
 
@@ -253,6 +280,23 @@ class Pen:
     reward_font: str = ""
     bbox: list[float] | None = None   # canvas-px extent of what was drawn (for keeping items on screen)
     world: World | None = None
+    theme: Theme = NEON
+
+    @property
+    def ink(self) -> str:
+        return self.theme.ink
+
+    def tone(self, color: str) -> str:
+        """Colour for a label sitting on a card: the item colour on neon glass, ink on pastel paper."""
+        return self.theme.ink if self.theme.sticker else color
+
+    def line(self, color: str) -> str:
+        """Colour for thin lines / ticks: they would vanish as pastel on bright footage, so pastel uses ink."""
+        return self.theme.ink if self.theme.sticker else color
+
+    def sk(self, width: float = 3.0) -> dict:
+        """Sticker outline for a filled shape (pastel only)."""
+        return {"border": width, "border_color": self.theme.ink} if self.theme.sticker else {}
 
     def safe(self, W: int, H: int) -> tuple[float, float, float, float]:
         """Safe area in canvas px (canvas.safe_area)."""
@@ -291,7 +335,8 @@ class Pen:
 
     def shape(self, slot: str, sub: int, path: Path, *, fill: str | None, opacity: float = 1.0,
               border: float = 0.0, border_color: str | None = None, border_opacity: float | None = None,
-              blur: float = 0.0, shadow: float = 0.0) -> None:
+              blur: float = 0.0, shadow: float = 0.0, shadow_color: str = "#000000",
+              shadow_opacity: float = 0.45) -> None:
         if not path or self.env.alpha <= 0.004 or self.env.scale <= 0.02:
             return
         cmds = []
@@ -312,20 +357,39 @@ class Pen:
             tags.append(rf"\3c{bgr(border_color or fill or '#FFFFFF')}"
                         rf"\3a{self._alpha(opacity if border_opacity is None else border_opacity)}")
         if shadow:
-            tags.append(rf"\4c&H000000&\4a{self._alpha(0.45)}")
+            tags.append(rf"\4c{bgr(shadow_color)}\4a{self._alpha(shadow_opacity)}")
         if blur:
             tags.append(rf"\blur{_n(blur)}")
         self.parts.append((slot, self.layer + sub, "{" + "".join(tags) + r"\p1}" + " ".join(cmds) + r"{\p0}"))
 
+    def card(self, slot: str, sub: int, path: Path, *, edge: str, opacity: float = 0.6, border: float = 2.5,
+             border_opacity: float | None = None, fill: str | None = None, fade: float = 1.0) -> None:
+        """Backing for panels, meters, counters, slots, buttons: dark glass with a thin coloured edge (neon) or a
+        cream sticker card with a chunky edge and an offset ink shadow (pastel)."""
+        t = self.theme
+        if t.sticker:   # cream paper tinted with the item's colour, plum outline, soft offset shadow
+            self.shape(slot, sub, path, fill=fill or _mix(t.back, edge, 0.38), opacity=(t.back_opacity or 0.9) * fade,
+                       border=max(border * 1.3, 3.0), border_color=t.ink, border_opacity=0.85 * fade, shadow=4.5,
+                       shadow_color=t.ink, shadow_opacity=0.26 * fade)
+        else:
+            self.shape(slot, sub, path, fill=fill or t.back, opacity=opacity, border=border, border_color=edge,
+                       border_opacity=border_opacity)
+
     def glow_shape(self, slot: str, sub: int, path: Path, color: str, opacity: float = 1.0, glow: float = 0.55) -> None:
-        """Neon: a blurred halo under a crisp fill."""
+        """Neon: a blurred halo under a crisp fill. Pastel: the same shape in ink slightly fatter underneath, like a
+        sticker outline (readable on bright footage where a pastel glow would vanish)."""
+        if self.theme.sticker:
+            self.shape(slot + "~", max(sub - 1, 0), path, fill=self.theme.ink, opacity=opacity, border=4.5,
+                       border_color=self.theme.ink)
+            self.shape(slot, sub, path, fill=color, opacity=opacity)
+            return
         self.shape(slot + "~", max(sub - 1, 0), path, fill=color, opacity=opacity * glow, border=3,
                    border_color=color, border_opacity=opacity * glow * 0.6, blur=6)
         self.shape(slot, sub, path, fill=color, opacity=opacity)
 
     def text(self, slot: str, sub: int, lx: float, ly: float, text: str, *, size: float, color: str,
              font: str | None = None, align: int = 5, opacity: float = 1.0, outline: float = 0.0,
-             outline_color: str = DARK, shadow: tuple[float, float] | None = None, shadow_color: str = "#000000",
+             outline_color: str | None = None, shadow: tuple[float, float] | None = None, shadow_color: str = "#000000",
              rot: float = 0.0, spacing: float = 0.0, scale: float = 1.0, blur: float = 0.0,
              halo: bool = True) -> None:
         """Text at local (lx, ly). Without an outline, HUD text gets a soft dark halo so it reads on bright
@@ -341,9 +405,11 @@ class Pen:
         tags = [rf"\an{align}\pos({_n(x)},{_n(y)})", rf"\fn{self.fonts.name(family, bold)}", rf"\fs{_n(fs)}",
                 rf"\b{1 if bold else 0}", rf"\1c{bgr(color)}\1a{self._alpha(opacity)}"]
         if outline:
-            tags.append(rf"\bord{_n(outline * s)}\3c{bgr(outline_color)}\3a{self._alpha(opacity)}")
+            tags.append(rf"\bord{_n(outline * s)}\3c{bgr(outline_color or self.theme.ink)}\3a{self._alpha(opacity)}")
         elif halo:
-            tags.append(rf"\bord{_n(max(fs * 0.09, 2.5))}\3c{bgr(DARK)}\3a{self._alpha(opacity * 0.55)}")
+            th = self.theme
+            tags.append(rf"\bord{_n(max(fs * (0.13 if th.sticker else 0.09), 2.5))}\3c{bgr(th.halo)}"
+                        rf"\3a{self._alpha(opacity * th.halo_opacity)}")
             blur = max(blur, fs * 0.07, 2.0)
         else:
             tags.append(r"\bord0")
@@ -404,7 +470,7 @@ def _reticle(item: Reticle, pen: Pen, t: float, box, W: int, H: int) -> None:
         pen.shape("flash", 4, bracket_corners(w, h, arm, lw * 2.2, ox, oy), fill="#FFFFFF", opacity=flash, blur=4)
     c = max(min(w, h) * 0.05, 9)
     pen.shape("cross", 2, stroke([(ox - c, oy), (ox + c, oy)], 3) + stroke([(ox, oy - c), (ox, oy + c)], 3),
-              fill=color, opacity=0.85)
+              fill=color, opacity=0.85, **pen.sk(2))
     if not locked:  # scan line sweeping the box
         phase = ((t - item.start) / 0.6) % 1
         y = oy - h / 2 + h * phase
@@ -419,12 +485,13 @@ def _reticle(item: Reticle, pen: Pen, t: float, box, W: int, H: int) -> None:
         th = size * 1.15
         if cy + top - th < max(m, sy0):  # no room above: put the tab inside the top edge
             top = oy - h / 2 + lw * 2 + th
-        pen.shape("tab", 3, round_rect(lx, top - th, lx + tw + size * 0.8, top, 4), fill=color, opacity=0.92)
-        pen.text("label", 4, lx + size * 0.4, top - th / 2, label, size=size, color=DARK, align=4, halo=False)
+        pen.shape("tab", 3, round_rect(lx, top - th, lx + tw + size * 0.8, top, 4), fill=color, opacity=0.92,
+                  **pen.sk(2.5))
+        pen.text("label", 4, lx + size * 0.4, top - th / 2, label, size=size, color=pen.ink, align=4, halo=False)
     sub_y = oy + h / 2 + lw * 1.5 + item.size * 0.3
     if cy + sub_y > min(H - m, sy1):
         sub_y = oy + h / 2 - lw * 2 - item.size * 0.3
-    pen.text("sub", 4, lx, sub_y, sub, size=item.size * 0.46, color=color, align=4, spacing=2,
+    pen.text("sub", 4, lx, sub_y, sub, size=item.size * 0.46, color=pen.tone(color), align=4, spacing=2,
              opacity=0.95 if locked or int(t * 4) % 2 else 0.55)
 
 
@@ -434,14 +501,15 @@ def _panel(item: Panel, pen: Pen, t: float, W: int) -> None:
     row, title_h, pad = sz * 1.5, sz * 1.65, sz * 0.5
     ph = title_h + row * len(item.items) + pad
     x0, y0, x1, y1 = -pw / 2, -ph / 2, pw / 2, ph / 2
-    pen.shape("bg", 0, round_rect(x0, y0, x1, y1, sz * 0.25), fill=DARK, opacity=0.62, border=2.5,
-              border_color=item.color, border_opacity=0.9, shadow=0)
+    pen.card("bg", 0, round_rect(x0, y0, x1, y1, sz * 0.25), edge=item.color, opacity=0.62, border=2.5,
+             border_opacity=0.9)
     notch = sz * 0.5
     pen.glow_shape("notch1", 2, polygon([(x0, y0 + notch), (x0, y0), (x0 + notch, y0), (x0 + notch * 0.6, y0 + 6),
                                          (x0 + 6, y0 + 6), (x0 + 6, y0 + notch * 0.6)]), item.color)
     pen.glow_shape("notch2", 2, polygon([(x1, y1 - notch), (x1, y1), (x1 - notch, y1), (x1 - notch * 0.6, y1 - 6),
                                          (x1 - 6, y1 - 6), (x1 - 6, y1 - notch * 0.6)]), item.color)
-    pen.text("title", 3, x0 + pad, y0 + title_h / 2, item.text, size=sz * 0.82, color=item.color, align=4, spacing=1.5)
+    pen.text("title", 3, x0 + pad, y0 + title_h / 2, item.text, size=sz * 0.82, color=pen.tone(item.color), align=4,
+             spacing=1.5)
     pen.shape("rule", 1, rect(x0 + pad, y0 + title_h - 2, x1 - pad, y0 + title_h), fill=item.color, opacity=0.5)
     current = next((i for i in range(len(item.items))
                     if i >= len(item.checks) or item.checks[i] is None or t < item.checks[i]), None)
@@ -456,20 +524,21 @@ def _panel(item: Panel, pen: Pen, t: float, W: int) -> None:
         b = box * bump
         if done:
             pen.shape(f"box{i}", 1, round_rect(bx - b / 2, cy - b / 2, bx + b / 2, cy + b / 2, 5),
-                      fill=item.accent_color)
+                      fill=item.accent_color, **pen.sk(2.5))
             pen.shape(f"tick{i}", 2, stroke([(bx - b * 0.28, cy), (bx - b * 0.08, cy + b * 0.22),
-                                              (bx + b * 0.3, cy - b * 0.24)], max(b * 0.13, 4)), fill=DARK)
+                                              (bx + b * 0.3, cy - b * 0.24)], max(b * 0.13, 4)), fill=pen.ink)
             if since < 0.35:
                 sweep = ease_out(since / 0.35)
                 pen.shape(f"rowflash{i}", 0, rect(x0 + 4, cy - row / 2 + 4, x0 + 4 + (pw - 8) * sweep, cy + row / 2 - 4),
                           fill=item.accent_color, opacity=0.35 * (1 - sweep))
         else:
             pen.shape(f"box{i}", 1, round_rect(bx - b / 2, cy - b / 2, bx + b / 2, cy + b / 2, 5), fill=None,
-                      border=2.5, border_color=item.color, border_opacity=0.9)
+                      border=2.5, border_color=pen.line(item.color), border_opacity=0.9)
         if i == current and int(t * 3) % 2 == 0:
-            pen.shape(f"cur{i}", 2, triangle(x0 + pad * 0.45, cy, sz * 0.22), fill=item.color)
+            pen.shape(f"cur{i}", 2, triangle(x0 + pad * 0.45, cy, sz * 0.22), fill=item.color, **pen.sk(2))
         pen.text(f"item{i}", 3, bx + box / 2 + sz * 0.4, cy, line, size=sz * 0.78,
-                 color=item.accent_color if done else item.text_color, align=4, opacity=0.8 if done else 1.0)
+                 color=pen.tone(item.accent_color) if done else item.text_color, align=4,
+                 opacity=0.8 if done else 1.0)
 
 
 def _meter(item: Meter, pen: Pen, t: float, W: int, H: int) -> None:
@@ -485,7 +554,7 @@ def _meter(item: Meter, pen: Pen, t: float, W: int, H: int) -> None:
         (ax, ay), (bx, by) = at(u0, w0), at(u1, w1)
         return rect(min(ax, bx), min(ay, by), max(ax, bx), max(ay, by))
 
-    pen.shape("bg", 0, band(0, 1, -T / 2, T / 2), fill=DARK, opacity=0.6, border=2.5, border_color=item.color)
+    pen.card("bg", 0, band(0, 1, -T / 2, T / 2), edge=item.color, opacity=0.6, border=2.5)
     inside = item.zone is not None and item.zone[0] <= v <= item.zone[1]
     if item.zone:
         lo, hi = item.zone
@@ -495,26 +564,26 @@ def _meter(item: Meter, pen: Pen, t: float, W: int, H: int) -> None:
             pen.shape(f"zedge{u}", 3, band(u - 0.002, u + 0.002, -T * 0.85, T * 0.85), fill=item.accent_color, opacity=0.95)
     for k in range(1, 10):
         pen.shape(f"tick{k}", 1, band(k / 10 - 0.0015, k / 10 + 0.0015, T / 2 + 3, T / 2 + 3 + T * (0.45 if k == 5 else 0.25)),
-                  fill=item.color, opacity=0.55)
+                  fill=pen.line(item.color), opacity=0.55)
     if item.style == "fill":
         if v > 0.003:
             pen.shape("fill", 2, band(0, v, -T / 2 + 3, T / 2 - 3), fill=item.accent_color if inside else item.color,
-                      opacity=0.88)
+                      opacity=0.88, **pen.sk(2.5))
             pen.glow_shape("edge", 3, band(max(v - 0.004, 0), v, -T / 2 - 2, T / 2 + 2), "#FFFFFF")
     else:
         pen.glow_shape("needle", 3, band(v - 0.003, v + 0.003, -T * 0.95, T * 0.95), "#FFFFFF")
         px, py = at(v, -T * 0.95 - 10)
-        pen.shape("pointer", 3, triangle(px, py, T * 0.45, "down" if horiz else "right"), fill="#FFFFFF")
+        pen.shape("pointer", 3, triangle(px, py, T * 0.45, "down" if horiz else "right"), fill="#FFFFFF", **pen.sk(2.5))
     if horiz:
         label_at, value_at_ = (-L / 2, -T / 2 - item.size * 0.55, 4), (L / 2, -T / 2 - item.size * 0.55, 6)
     else:
         label_at, value_at_ = (0, -L / 2 - item.size * 1.25, 5), (0, -L / 2 - item.size * 0.5, 5)
     if item.text:
-        pen.text("label", 3, label_at[0], label_at[1], item.text, size=item.size * 0.62, color=item.color,
+        pen.text("label", 3, label_at[0], label_at[1], item.text, size=item.size * 0.62, color=pen.tone(item.color),
                  align=label_at[2], spacing=1.5)
     if item.show_value:
         pen.text("value", 3, value_at_[0], value_at_[1], f"{round(v * 100)}%", size=item.size * 0.66,
-                 color=item.accent_color if inside else item.text_color, align=value_at_[2])
+                 color=pen.tone(item.accent_color) if inside else item.text_color, align=value_at_[2])
 
 
 def format_value(item: Counter, v: float) -> str:
@@ -547,14 +616,17 @@ def _counter(item: Counter, pen: Pen, t: float) -> None:
     if item.box:
         label_w = pen.width(item.text, sz * 0.5) + 2 * len(item.text) if item.text else 0
         bw, bh = max(full, label_w) + sz * 0.9, total_h + sz * 0.5
-        pen.shape("bg", 0, round_rect(-bw / 2, -bh / 2, bw / 2, bh / 2, sz * 0.22), fill=DARK, opacity=0.6, border=2.5,
-                  border_color=item.color, border_opacity=0.85)
+        pen.card("bg", 0, round_rect(-bw / 2, -bh / 2, bw / 2, bh / 2, sz * 0.22), edge=item.color, opacity=0.6,
+                 border=2.5, border_opacity=0.85)
     if item.text:
-        pen.text("label", 3, 0, -total_h / 2 + label_h / 2, item.text, size=sz * 0.5, color=item.color, spacing=2)
+        pen.text("label", 3, 0, -total_h / 2 + label_h / 2, item.text, size=sz * 0.5, color=pen.tone(item.color),
+                 spacing=2)
     x = -sum(widths) / 2
     cy = total_h / 2 - num_h / 2
     for i, (ch, w) in enumerate(zip(text, widths)):
-        pen.text(f"ch{i}", 3, x + w / 2, cy, ch, size=sz, color=item.text_color, outline=sz * 0.05, scale=bump)
+        flat = pen.theme.sticker and item.text_color == pen.ink   # ink digits need no ink outline
+        pen.text(f"ch{i}", 3, x + w / 2, cy, ch, size=sz, color=item.text_color, outline=0 if flat else sz * 0.05,
+                 scale=bump, halo=False)
         x += w
 
 
@@ -575,13 +647,16 @@ def _popup(item: Popup, pen: Pen, t: float, H: int) -> None:
         pen.shape("rays", 0, rays, fill=item.accent_color, opacity=0.9 * (1 - p))
         pen.shape("ring", 0, arc(0, 0, sz * (0.6 + 1.8 * ease_out(p)), sz * 0.08 * (1 - p) + 1, 0, 360),
                   fill="#FFFFFF", opacity=0.8 * (1 - p))
+    # a thick outline eats the gaps between words in a long line: open the letter spacing a little (pastel font)
+    gap = sz * 0.05 if pen.theme.sticker and len(item.text) > 12 else 0.0
     pen.text("text", 3, 0, 0, item.text, size=sz, color=item.accent_color, font=item.font or pen.reward_font,
-             outline=sz * 0.085, outline_color="#1A0F2E", shadow=(sz * 0.05, sz * 0.07), shadow_color=item.shadow_color,
-             rot=item.tilt)
+             outline=sz * 0.085, outline_color=pen.theme.pop_outline, shadow=(sz * 0.05, sz * 0.07),
+             shadow_color=item.shadow_color, rot=item.tilt, spacing=gap)
     if item.sub:
         sub_alpha = clamp((age - 0.12) / 0.15)
-        pen.text("sub", 3, 0, sz * 0.82, item.sub, size=sz * 0.42, color=item.text_color, font=item.font or pen.reward_font,
-                 outline=sz * 0.05, outline_color="#1A0F2E", rot=item.tilt, opacity=sub_alpha)
+        sub_color = CREAM if pen.theme.sticker and item.text_color == pen.ink else item.text_color   # not ink on ink
+        pen.text("sub", 3, 0, sz * 0.82, item.sub, size=sz * 0.42, color=sub_color, font=item.font or pen.reward_font,
+                 outline=sz * 0.05, outline_color=pen.theme.pop_outline, rot=item.tilt, opacity=sub_alpha)
 
 
 def _bezier(p0, p1, p2, u):
@@ -595,18 +670,18 @@ def _chip(pen: Pen, slot: str, sub: int, x: float, y: float, r: float, item: Slo
     art = load_sprite(sprite, pen.world) if sprite else None
     if art:
         side = r * 2.1
-        pen.shape(slot + "c", sub, round_rect(x - side / 2, y - side / 2, x + side / 2, y + side / 2, side * 0.16),
-                  fill=DARK, border=3, border_color=item.accent_color)
+        pen.card(slot + "c", sub, round_rect(x - side / 2, y - side / 2, x + side / 2, y + side / 2, side * 0.16),
+                 edge=item.accent_color, opacity=1.0, border=3)
         draw_sprite(pen, slot + "s", sub + 1, x, y, side * 0.86, art)
         return
-    pen.shape(slot + "c", sub, circle(x, y, r), fill=item.accent_color, border=3, border_color=DARK)
+    pen.shape(slot + "c", sub, circle(x, y, r), fill=item.accent_color, border=3, border_color=pen.ink)
     icon = item.icons[i] if i < len(item.icons) else None
     if icon:
         for n, (path, role) in enumerate(icon_path(icon, r * 1.2)):
             moved = [(op, [(px + x, py + y) for px, py in pts]) for op, pts in path]
-            pen.shape(f"{slot}i{n}", sub + 1 + n, moved, fill=DARK if role == "fill" else item.accent_color)
+            pen.shape(f"{slot}i{n}", sub + 1 + n, moved, fill=pen.ink if role == "fill" else item.accent_color)
     elif i < len(item.items):
-        pen.text(slot + "t", sub + 1, x, y, item.items[i][:4], size=r * 0.95, color=DARK)
+        pen.text(slot + "t", sub + 1, x, y, item.items[i][:4], size=r * 0.95, color=pen.ink)
 
 
 def _slots(item: Slots, pen: Pen, t: float, world: World, k: int) -> None:
@@ -620,8 +695,9 @@ def _slots(item: Slots, pen: Pen, t: float, world: World, k: int) -> None:
         filled += landed
         since = t - arrive if landed else -1.0
         hot = clamp(1 - since / 0.3) if landed else 0.0
-        pen.shape(f"slot{i}", 0, round_rect(sx - S / 2, sy - S / 2, sx + S / 2, sy + S / 2, S * 0.18), fill=DARK,
-                  opacity=0.6, border=2.5 + 2 * hot, border_color=item.accent_color if hot > 0 else item.color)
+        pen.card(f"slot{i}", 0, round_rect(sx - S / 2, sy - S / 2, sx + S / 2, sy + S / 2, S * 0.18),
+                 edge=item.accent_color if hot > 0 else item.color, opacity=0.6, border=2.5 + 2 * hot,
+                 fade=1.0 if landed else 0.6)
         if hot > 0:
             pen.shape(f"slotflash{i}", 1, round_rect(sx - S / 2, sy - S / 2, sx + S / 2, sy + S / 2, S * 0.18),
                       fill=item.accent_color, opacity=0.45 * hot)
@@ -657,16 +733,19 @@ def _card(item: Card, pen: Pen, t: float, W: int) -> None:
     ch = title_h + pic + (sz * 0.5 if art else 0) + star_r * 3.2 + rows * sz * 1.2 + sz * 0.8
     x0, y0, x1, y1 = -cw / 2, -ch / 2, cw / 2, ch / 2
     pen.shape("glow", 0, round_rect(x0, y0, x1, y1, sz * 0.4), fill=item.color, opacity=0.35, blur=14)
-    pen.shape("bg", 1, round_rect(x0, y0, x1, y1, sz * 0.4), fill=DARK, opacity=0.88, border=3, border_color=item.color)
-    pen.shape("titlebar", 1, round_rect(x0 + 10, y0 + 10, x1 - 10, y0 + title_h, sz * 0.3), fill=item.color, opacity=0.95)
-    pen.text("title", 3, 0, y0 + 10 + (title_h - 10) / 2, item.text, size=sz * 1.0, color=DARK,
-             font=item.font or pen.reward_font)
+    pen.card("bg", 1, round_rect(x0, y0, x1, y1, sz * 0.4), edge=item.color, opacity=0.88, border=3)
+    pen.shape("titlebar", 2, round_rect(x0 + 10, y0 + 10, x1 - 10, y0 + title_h, sz * 0.3), fill=item.color, opacity=0.95,
+              **pen.sk(3))
+    pen.text("title", 3, 0, y0 + 10 + (title_h - 10) / 2, item.text, size=sz * 1.0, color=pen.ink,
+             font=item.font or pen.reward_font, halo=False)
     if art:
         pcy = y0 + title_h + sz * 0.5 + pic / 2
         reveal = ease_out((t - item.start - 0.15) / 0.3)
         if reveal > 0:
             pen.shape("picbg", 1, round_rect(-pic * 0.56, pcy - pic * 0.56, pic * 0.56, pcy + pic * 0.56, pic * 0.1),
-                      fill="#000000", opacity=0.5 * reveal, border=3, border_color=item.color, border_opacity=reveal)
+                      fill=pen.theme.back if pen.theme.sticker else "#000000",
+                      opacity=(0.95 if pen.theme.sticker else 0.5) * reveal, border=3, border_color=item.color,
+                      border_opacity=reveal)
             draw_sprite(pen, "pic", 2, 0, pcy, pic * reveal, art)
     sy = y0 + title_h + pic + (sz * 0.5 if art else 0) + star_r * 1.6
     for i in range(3):
@@ -679,14 +758,15 @@ def _card(item: Card, pen: Pen, t: float, W: int) -> None:
             p = (t - at) / 0.2
             s = 2.3 - 1.3 * ease_in(p) if p < 1 else 1 + 0.08 * math.sin(math.pi * clamp((p - 1) * 0.2 / 0.15))
             pen.shape(f"star{i}", 2, star5(sx, sy + lift, star_r * big * s), fill=item.accent_color, border=4,
-                      border_color="#1A0F2E", opacity=clamp(p * 3))
+                      border_color=pen.theme.pop_outline, opacity=clamp(p * 3))
             if t - at < 0.4:
                 q = (t - at) / 0.4
                 pen.shape(f"starring{i}", 3, arc(sx, sy + lift, star_r * big * (1 + 1.2 * ease_out(q)), 6 * (1 - q) + 1,
                                                  0, 360), fill="#FFFFFF", opacity=1 - q)
         else:
-            pen.shape(f"star{i}", 2, star5(sx, sy + lift, star_r * big), fill="#FFFFFF", opacity=0.12, border=3,
-                      border_color=item.color, border_opacity=0.6)
+            pen.shape(f"star{i}", 2, star5(sx, sy + lift, star_r * big),
+                      fill=pen.ink if pen.theme.sticker else "#FFFFFF", opacity=0.12, border=3,
+                      border_color=pen.line(item.color), border_opacity=0.45 if pen.theme.sticker else 0.6)
     last = item.start + item.star_delay + max(item.stars - 1, 0) * item.star_gap + 0.25
     for i, line in enumerate(item.items):
         appear = clamp((t - last - i * 0.12) / 0.2)
@@ -702,17 +782,19 @@ def _prompt(item: Prompt, pen: Pen, t: float) -> None:
     done = holding and p >= 1
     since_done = t - item.hold[1] if done else -1.0
     blink = 0.55 + 0.45 * (0.5 + 0.5 * math.cos(2 * math.pi * 2.2 * (t - item.start))) if item.blink and not holding else 1.0
-    fill = item.accent_color if done and since_done < 0.25 else DARK
-    pen.shape("btn", 1, circle(0, 0, R), fill=fill, opacity=0.8, border=3, border_color=item.color)
-    pen.text("key", 3, 0, 0, item.button, size=sz * (0.62 if len(item.button) == 1 else 0.44), color=item.color)
+    fill = item.accent_color if done and since_done < 0.25 else None
+    pen.card("btn", 1, circle(0, 0, R), edge=item.color, opacity=0.8, border=3, fill=fill)
+    pen.text("key", 3, 0, 0, item.button, size=sz * (0.62 if len(item.button) == 1 else 0.44),
+             color=pen.tone(item.color))
     if holding:
-        pen.shape("ringbg", 1, arc(0, 0, R + 9, 7, 0, 360), fill="#FFFFFF", opacity=0.18)
+        pen.shape("ringbg", 1, arc(0, 0, R + 9, 7, 0, 360), fill=pen.ink if pen.theme.sticker else "#FFFFFF",
+                  opacity=0.15 if pen.theme.sticker else 0.18)
         pen.glow_shape("ring", 2, arc(0, 0, R + 9, 7, 0, 360 * p), item.accent_color)
     if item.text:
         tw = pen.width(item.text, sz * 0.6)
         x0 = R + sz * 0.35
-        pen.shape("pill", 0, round_rect(x0, -sz * 0.45, x0 + tw + sz * 0.7, sz * 0.45, sz * 0.45), fill=DARK,
-                  opacity=0.55 * blink, border=2, border_color=item.color, border_opacity=0.8 * blink)
+        pen.card("pill", 0, round_rect(x0, -sz * 0.45, x0 + tw + sz * 0.7, sz * 0.45, sz * 0.45), edge=item.color,
+                 opacity=0.55 * blink, border=2, border_opacity=0.8 * blink, fade=blink)
         pen.text("label", 3, x0 + sz * 0.35, 0, item.text, size=sz * 0.6, color=item.text_color, align=4,
                  opacity=blink, spacing=1)
 
@@ -732,8 +814,8 @@ def _icon(item: Icon, pen: Pen, t: float) -> None:
     art = load_sprite(item.sprite, pen.world) if item.sprite else None
     if item.sprite is not None:
         if art:
-            pen.shape("bg", 1, round_rect(-size * 0.58 * sx, -size * 0.58, size * 0.58 * sx, size * 0.58, size * 0.12),
-                      fill=DARK, opacity=0.85, border=3, border_color=item.accent_color)
+            pen.card("bg", 1, round_rect(-size * 0.58 * sx, -size * 0.58, size * 0.58 * sx, size * 0.58, size * 0.12),
+                     edge=item.accent_color, opacity=0.85, border=3)
             draw_sprite(pen, "spr", 2, 0, 0, size, art, squash=sx)
         pen.env.rot, pen.env.dy = saved
         return
@@ -741,11 +823,11 @@ def _icon(item: Icon, pen: Pen, t: float) -> None:
         path = [(op, [(x * sx, y) for x, y in pts]) for op, pts in path]
         sub = 1 + n
         if role == "fill":
-            pen.shape(f"p{n}", sub, path, fill=item.accent_color, border=max(size * 0.045, 3), border_color=DARK)
+            pen.shape(f"p{n}", sub, path, fill=item.accent_color, border=max(size * 0.045, 3), border_color=pen.ink)
         elif role == "detail_bg":
-            pen.shape(f"p{n}", sub, path, fill=DARK, opacity=0.85)
+            pen.shape(f"p{n}", sub, path, fill=pen.ink, opacity=0.85)
         else:
-            pen.shape(f"p{n}", sub, path, fill=DARK, opacity=0.55)
+            pen.shape(f"p{n}", sub, path, fill=pen.ink, opacity=0.55)
     pen.env.rot, pen.env.dy = saved
 
 
@@ -754,7 +836,7 @@ def _visor(item: Visor, pen: Pen, t: float, W: int, H: int) -> None:
     boot = 1.0 if item.enter == "none" else ease_out(age / 0.45)   # enter none = there from the first frame
     m = item.margin * W
     out = (1 - boot) * 0.05 * W
-    arm, lw = 0.075 * W, 5.0
+    arm, lw = 0.075 * W, (7.0 if pen.theme.sticker else 5.0)
     # corners in local coords: the visor item is centred on the frame
     for name, (cx, cy, sx, sy) in {"tl": (-W / 2 + m - out, -H / 2 + m - out, 1, 1),
                                    "tr": (W / 2 - m + out, -H / 2 + m - out, -1, 1),
@@ -765,15 +847,20 @@ def _visor(item: Visor, pen: Pen, t: float, W: int, H: int) -> None:
     sz = item.size * 0.7
     tw = pen.width(item.text, sz) + 3 * len(item.text)
     band_h = m + item.size * 1.9
-    pen.shape("band", 0, rect(-W / 2, -H / 2 - 40, W / 2, -H / 2 + band_h), fill="#000000", opacity=0.3 * boot,
-              blur=28)
-    pen.text("title", 3, 0, top, item.text, size=sz, color=item.color, spacing=3, opacity=boot)
+    if pen.theme.sticker:   # a cream name tag instead of the dark vignette band
+        pen.card("tag", 1, round_rect(-tw / 2 - sz * 0.7, top - sz * 0.72, tw / 2 + sz * 0.7, top + sz * 0.72, sz * 0.72),
+                 edge=item.color, border=2.5, fade=boot)
+    else:
+        pen.shape("band", 0, rect(-W / 2, -H / 2 - 40, W / 2, -H / 2 + band_h), fill="#000000", opacity=0.3 * boot,
+                  blur=28)
+    pen.text("title", 3, 0, top, item.text, size=sz, color=pen.tone(item.color), spacing=3, opacity=boot)
     gap = tw / 2 + sz * 0.8
     for side in (-1, 1):
         x_in, x_out = side * gap, side * (W / 2 - m - arm - sz * 0.6)
         if abs(x_out) > abs(x_in):
-            pen.shape(f"rule{side}", 1, stroke([(x_in, top), (x_out, top)], 2), fill=item.color, opacity=0.55 * boot)
-            pen.shape(f"rulecap{side}", 1, rect(x_out - 3, top - 7, x_out + 3, top + 7), fill=item.color,
+            pen.shape(f"rule{side}", 1, stroke([(x_in, top), (x_out, top)], 2), fill=pen.line(item.color),
+                      opacity=0.55 * boot)
+            pen.shape(f"rulecap{side}", 1, rect(x_out - 3, top - 7, x_out + 3, top + 7), fill=pen.line(item.color),
                       opacity=0.8 * boot)
     small = item.size * 0.52
     row2 = top + sz * 1.25
@@ -782,15 +869,17 @@ def _visor(item: Visor, pen: Pen, t: float, W: int, H: int) -> None:
         x = W / 2 - m - small * 0.4
         pen.text("rec", 3, x, row2, "REC", size=small, color=item.text_color, align=6, spacing=1.5, opacity=boot)
         pen.shape("recdot", 2, circle(x - pen.width("REC", small) - small * 0.9, row2, small * 0.28),
-                  fill="#FF3B3B", opacity=boot if on else 0.15)
+                  fill="#FF7A93" if pen.theme.sticker else "#FF3B3B", opacity=boot if on else 0.15, **pen.sk(2.5))
     if item.clock:
         s = int(age)
         pen.text("clock", 3, -W / 2 + m + small * 0.4, row2, f"T+{s // 60:02d}:{s % 60:02d}", size=small,
                  color=item.text_color, align=4, spacing=1.5, opacity=boot)
     bottom = H / 2 - m - 6
-    pen.shape("btm", 1, stroke([(-0.12 * W, bottom), (0.12 * W, bottom)], 2), fill=item.color, opacity=0.5 * boot)
+    pen.shape("btm", 1, stroke([(-0.12 * W, bottom), (0.12 * W, bottom)], 2), fill=pen.line(item.color),
+              opacity=0.5 * boot)
     for i in (-1, 0, 1):
-        pen.shape(f"btmdot{i}", 1, circle(i * 0.035 * W, bottom - 14, 3.5), fill=item.color, opacity=0.7 * boot)
+        pen.shape(f"btmdot{i}", 1, circle(i * 0.035 * W, bottom - 14, 3.5), fill=pen.line(item.color),
+                  opacity=0.7 * boot)
     if item.scanlines:
         lines: Path = []
         for y in range(0, H, 6):
@@ -875,6 +964,20 @@ def load_sprite(sprite: Sprite | None, world: World | None) -> SpriteArt | None:
     return _SPRITES[key]
 
 
+def _mix(color: str, toward: str, amount: float) -> str:
+    """Blend a #RRGGBB colour toward another by `amount` (0 = unchanged)."""
+    if amount <= 0:
+        return color
+    a = [int(color[i:i + 2], 16) for i in (1, 3, 5)]
+    b = [int(toward[i:i + 2], 16) for i in (1, 3, 5)]
+    return "#%02X%02X%02X" % tuple(round(x + (y - x) * amount) for x, y in zip(a, b))
+
+
+def _soften(color: str, amount: float) -> str:
+    """Pastel look for pixel art cut from the video: blend toward cream."""
+    return _mix(color, CREAM, amount)
+
+
 def draw_sprite(pen: Pen, slot: str, sub: int, cx: float, cy: float, size: float, art: SpriteArt,
                 squash: float = 1.0) -> None:
     """Pixel art centred on (cx, cy), longest side `size` px; one drawing per colour, cells overlap a hair so
@@ -889,7 +992,7 @@ def draw_sprite(pen: Pen, slot: str, sub: int, cx: float, cy: float, size: float
         for r, c0, c1 in art.runs[color]:
             path += rect(left + c0 * cell * squash - ov, top + r * cell - ov,
                          left + c1 * cell * squash + ov, top + (r + 1) * cell + ov)
-        pen.shape(f"{slot}{n}", sub, path, fill=color)
+        pen.shape(f"{slot}{n}", sub, path, fill=_soften(color, pen.theme.soften))
 
 
 # ---- slash ------------------------------------------------------------------------------------------
@@ -943,6 +1046,14 @@ def _slash(item: Slash, pen: Pen, t: float, W: int) -> None:
 
 # ---- driver -------------------------------------------------------------------------------------------
 
+def _themed(item, theme: Theme):
+    """Fill the colours the plan left empty with the theme's defaults."""
+    fill = {name: getattr(theme, key) for name, key in (("color", "primary"), ("accent_color", "accent"),
+                                                        ("text_color", "text"))
+            if getattr(item, name, "x") is None}
+    return item.model_copy(update=fill) if fill else item
+
+
 def _flusher(runs: dict, lines: list[str], edge):
     def flush(slot: str) -> None:
         first, last, lay, text = runs.pop(slot)
@@ -970,8 +1081,9 @@ def hud_events(plan: EditPlan, world: World, fonts: FontBook, default_font: str)
     if not plan.hud:
         return []
     W, H, fps = world.W, world.H, world.fps
-    hud_font = HUD_FONT if fonts.resolves(HUD_FONT) else default_font
-    reward_font = REWARD_FONT if fonts.resolves(REWARD_FONT) else hud_font
+    theme = THEMES[plan.hud_theme]
+    hud_font = theme.hud_font if fonts.resolves(theme.hud_font) else default_font
+    reward_font = theme.reward_font if fonts.resolves(theme.reward_font) else hud_font
     lines: list[str] = []
 
     def edge(k: int) -> str:
@@ -1002,6 +1114,7 @@ def hud_events(plan: EditPlan, world: World, fonts: FontBook, default_font: str)
             _slash(item, pen, t, W)
 
     for idx, item in enumerate(plan.hud):
+        item = _themed(item, theme)
         layer = BASE_LAYER + idx * LAYERS_PER_ITEM
         k0 = max(math.ceil(item.start * fps - 1e-9), 0)
         k1 = min(math.ceil(item.end * fps - 1e-9), world.total)   # exclusive
@@ -1031,13 +1144,13 @@ def hud_events(plan: EditPlan, world: World, fonts: FontBook, default_font: str)
             else:
                 cx, cy = item.x * W, item.y * H
             pen = Pen(cx, cy, envelope(item, t, H), fonts, item.font or hud_font, layer, reward_font=reward_font,
-                      world=world)
+                      world=world, theme=theme)
             draw(item, pen, t, box, k)
             if item.anchor is not None and item.type not in ("reticle", "visor", "slash") and pen.bbox:
                 shift = _keep_inside(pen.bbox, pen.safe(W, H))   # world-anchored UI stays in the safe area
                 if shift != (0.0, 0.0):
                     pen = Pen(cx + shift[0], cy + shift[1], envelope(item, t, H), fonts, item.font or hud_font,
-                              layer, reward_font=reward_font, world=world)
+                              layer, reward_font=reward_font, world=world, theme=theme)
                     draw(item, pen, t, box, k)
             seen = set()
             for slot, lay, text in pen.parts:

@@ -363,3 +363,58 @@ def test_loudness_target_reaches_loudnorm(tmp_path):
     plan = color_plan(export={"loudness": -16}, audio=[{"path": "sfx:pop", "role": "sfx"}])
     cmd = build_command(plan, tmp_path / "x.mp4", base_dir=tmp_path, work_dir=tmp_path / "w", font="DejaVu Sans")
     assert "loudnorm=I=-16:TP=-2" in cmd[cmd.index("-filter_complex") + 1]
+
+
+# ---- procedural music bed ------------------------------------------------------------------------------
+
+def test_music_bed_is_deterministic_stereo_and_has_the_requested_length(tmp_path):
+    import wave
+
+    import numpy as np
+
+    from vedit.musicgen import make_bed, render_bed
+
+    a, b = render_bed(4.7, seed=3), render_bed(4.7, seed=3)
+    assert a.shape == (2, int(4.7 * 48000)) and np.array_equal(a, b)
+    assert 0.3 < float(np.abs(a).max()) <= 0.5 + 1e-3        # peak-normalised to -6 dBFS
+    assert float(np.abs(a[:, :48000]).mean()) > 0.003 and float(np.abs(a[:, -48000:]).mean()) > 0.0   # not silent
+    assert not np.array_equal(a, render_bed(4.7, seed=4))
+    path = make_bed(tmp_path / "bed.wav", 2.4)
+    with wave.open(str(path)) as f:
+        assert (f.getnchannels(), f.getframerate(), f.getnframes()) == (2, 48000, int(2.4 * 48000))
+
+
+# ---- pastel HUD theme -----------------------------------------------------------------------------------
+
+def test_pastel_theme_resolves_defaults_fonts_and_palette():
+    from vedit.hud import NEON, PASTEL, _themed
+    from vedit.ass import check_fonts
+
+    neon = build_ass(color_plan(hud=ALL_HUD), "DejaVu Sans", Path("assets/fonts"), fps=30)
+    pastel = build_ass(color_plan(hud_theme="pastel", hud=ALL_HUD), "DejaVu Sans", Path("assets/fonts"), fps=30)
+    fonts = FontBook(Path("assets/fonts"))
+    ink = r"&H683A4E&"                                  # plum ink #4E3A68 in ASS BGR
+    assert ink in pastel and ink not in neon
+    assert fonts.name("Baloo 2", True) in pastel and fonts.name("Paytone One", True) in pastel   # round fonts
+    assert fonts.name("Chakra Petch", True) in neon and fonts.name("Chakra Petch", True) not in pastel
+    # defaults come from the theme; colours the plan sets are kept
+    item = color_plan(hud=[{"type": "icon", "start": 0, "end": 1, "icon": "star", "accent_color": "#FF0000"}]).hud[0]
+    assert (item.color, item.accent_color, item.text_color) == (None, "#FF0000", None)
+    themed = _themed(item, PASTEL)
+    assert (themed.color, themed.accent_color, themed.text_color) == (PASTEL.primary, "#FF0000", PASTEL.text)
+    assert _themed(item, NEON).text_color == "#FFFFFF"
+    with pytest.raises(ValidationError):
+        color_plan(hud_theme="rainbow")
+    # glyph checks follow the theme's fonts: Paytone One has no ▶, Chakra Petch does
+    popup = [{"type": "popup", "start": 0, "end": 1, "text": "SIDE QUEST", "sub": "▶▶ ×4"}]
+    assert any("▶" in p for p in check_fonts(color_plan(hud_theme="pastel", hud=popup), "DejaVu Sans",
+                                              Path("assets/fonts")))
+    assert not check_fonts(color_plan(hud=popup), "DejaVu Sans", Path("assets/fonts"))
+
+
+def test_pastel_popup_subtitle_is_not_ink_on_ink():
+    popup = [{"type": "popup", "start": 0, "end": 1, "text": "PERFECT!", "sub": "+300", "enter": "none",
+              "exit": "none"}]
+    ass = build_ass(color_plan(hud_theme="pastel", hud=popup), "DejaVu Sans", Path("assets/fonts"), fps=30)
+    sub = [ln for ln in ass.splitlines() if ln.endswith("+300")]
+    assert sub and r"\1c&HEEF8FF&" in sub[0]            # cream fill (#FFF8EE) with the ink outline

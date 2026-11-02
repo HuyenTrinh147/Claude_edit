@@ -8,7 +8,7 @@ viết tiếng Việt, mã nguồn & comment tiếng Anh.
 Trong Claude Code, bạn là người điều phối: 4 agent chạy dưới dạng subagent (`.claude/agents/`) nên không cần
 ANTHROPIC_API_KEY — `video-researcher` (Agent 1), `video-scriptwriter` (Agent 2), `video-editor` (Agent 3),
 `video-critic` (phản biện). Subagent không gọi được subagent khác: bạn chạy từng bước. Việc không cần AI
-(`vedit fetch / analyze / sheet / frame / track / sfx / validate / render / note / kb / projects`) chạy bằng CLI.
+(`vedit fetch / analyze / sheet / frame / track / sfx / music / validate / render / note / kb / projects`) chạy bằng CLI.
 
 - Đầu phiên, nếu `command -v vedit` không thấy lệnh: `bash scripts/setup.sh` (tạo .venv, cài, đưa `vedit` ra PATH).
 - Lệnh tắt (`.claude/skills/`): `/lam-video` (trọn quy trình), `/kich-ban` (Agent 2), `/sua-video` (Agent 3),
@@ -42,10 +42,12 @@ ANTHROPIC_API_KEY — `video-researcher` (Agent 1), `video-scriptwriter` (Agent 
 - `vedit/track.py` — bám vật bằng OpenCV CSRT (extra `track`), tự dừng ở điểm cắt cảnh → `analysis/tracks/<tên>.json`.
 - `vedit/world.py` — quy đổi toạ độ nguồn (track) → pixel khung ở từng frame, theo đúng hình học của render (layout
   theo frame, fit, Ken Burns, punch/shake — hằng số envelope dùng chung với `render.motion_filter`).
+- `vedit/musicgen.py` — nhạc nền tạo bằng code (`vedit music`): hộp nhạc / kalimba, vừa đúng số ô nhịp, xác định theo seed.
 - `vedit/sfxlib.py` — thư viện SFX thật: `vedit sfx add` nhập bộ âm thanh (thư mục, zip, video, link Drive qua gdown)
   vào `assets/sfx/<bộ>/`, đo độ dài/peak/mốc đỉnh tiếng, đoán loại theo tên; chỉ commit `index.json`.
-- `vedit/hud.py` — HUD game (visor, reticle, panel, meter, counter, popup, slots, card, prompt, icon): tính từng frame
-  bằng Python rồi ghi event ASS tĩnh, gộp các frame giống nhau; mép event nằm giữa hai frame.
+- `vedit/hud.py` — HUD game (visor, reticle, panel, meter, counter, popup, slots, card, prompt, icon, slash): tính từng
+  frame bằng Python rồi ghi event ASS tĩnh, gộp các frame giống nhau; mép event nằm giữa hai frame. `EditPlan.hud_theme`
+  = `neon` | `pastel` (`Theme` trong hud.py: màu mặc định, font, thẻ kính tối hoặc thẻ kem kiểu sticker).
 - `vedit/agents/` — phiên bản chạy bằng Claude API (cần key): `base.py` (tool runner streaming, web_search/web_fetch,
   caching, fallbacks), `tools.py`, `researcher.py`, `scriptwriter.py` (`run_concepts` → cổng duyệt `pipeline.choose_concept`
   → `run_scriptwriter`), `editor.py`.

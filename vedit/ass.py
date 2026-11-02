@@ -570,16 +570,17 @@ def check_fonts(plan: EditPlan, font: str, fonts_dir: Path | None = None) -> lis
     uses += [(f"graphic #{i}", g.font or font, True, g.text + g.label)
              for i, g in enumerate(plan.graphics) if g.text or g.label]
     if plan.hud:
-        from .hud import HUD_FONT, REWARD_FONT, hud_texts
+        from .hud import THEMES, hud_texts
 
-        hud_font = HUD_FONT if fonts.resolves(HUD_FONT) else font
+        theme = THEMES[plan.hud_theme]
+        hud_font = theme.hud_font if fonts.resolves(theme.hud_font) else font
         for i, item in enumerate(plan.hud):
             text = "".join(hud_texts(item))
             if not text:
                 continue
             uses.append((f"hud #{i} ({item.type})", item.font or hud_font, True, text))
-            if item.type in ("popup", "card") and not item.font and fonts.resolves(REWARD_FONT):
-                uses.append((f"hud #{i} ({item.type})", REWARD_FONT, True, text))
+            if item.type in ("popup", "card") and not item.font and fonts.resolves(theme.reward_font):
+                uses.append((f"hud #{i} ({item.type})", theme.reward_font, True, text))
     problems, unknown = [], set()
     for where, family, bold, text in uses:
         if family in unknown:

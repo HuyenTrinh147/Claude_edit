@@ -44,6 +44,8 @@ Trả về tóm tắt mỗi hướng trong 2–3 dòng.
    zip tick complete buzz`, có `pitch` nửa cung) hoặc SFX THẬT trong thư viện: `vedit sfx list <từ khoá>` (đường dẫn +
    mốc đỉnh tiếng → `start` = mốc khung hình − đỉnh). Có transcript → captions với mốc đã quy đổi theo đoạn cắt.
    Đo vị trí chữ/đồ hoạ bằng `vedit frame <slug> <giây> --grid`.
+   Phong cách giao diện game: `hud_theme` `neon` hoặc `pastel` (người dùng thích pastel tươi tắn); nhạc nền nhẹ tạo bằng
+   `vedit music <slug> --duration <giây>`; âm thanh dày: mỗi sự kiện HUD một tiếng (xem ghi chú HUD mục 4b).
    **Hướng "game" (HUD, AR/VR)**: đọc `vedit kb show techniques/giao-dien-game-hud-bam-vat-cho-video`. Đồ hoạ bám vật
    cần track trước: `vedit track <slug> <tên> --at <giây nguồn> --box x,y,w,h [--until ..] [--back ..]`, Read ảnh
    `analysis/tracks/<tên>_sheet.jpg` để chắc khung bám đúng vật, rồi dùng `"anchor": {"track": "<tên>", ...}`.

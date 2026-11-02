@@ -66,6 +66,10 @@ thật khi hợp phong cách (whoosh, impact, riser nghe "đắt" hơn bản t�
 Âm 8-bit cho phong cách game: `pickup`, `coin`, `lock`, `combo`, `levelup`, `slash`, `zip`, `tick`, `complete`, `buzz`.
 `pitch` (nửa cung, −24..24) đổi cao độ — chuỗi combo cao dần 0, 2, 4.
 
+## Nhạc nền tạo bằng code (`vedit music`)
+`vedit music <dự án> --duration <giây>` sinh nhạc nền hộp nhạc / kalimba (không file, không bản quyền) vào
+`<dự án>/audio/bed-pastel.wav`; dùng như `audio` role `music`, volume ~0.075 (−41 LUFS, dưới tiếng thật), `duck: false`.
+
 ## Giao diện game & bám vật (`hud`, `vedit track`)
 Khung kính VR, khung ngắm bám vật, bảng nhiệm vụ tick dần, thanh đo có vùng chuẩn, số chạy / đồng hồ đếm lùi, chữ thưởng
 PERFECT!, túi đồ (vật phẩm pixel-art cắt từ chính video), thẻ ★★★, nút tay cầm VR, icon, vệt chém — xem
