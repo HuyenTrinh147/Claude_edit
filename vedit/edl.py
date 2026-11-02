@@ -528,7 +528,9 @@ class ExportSettings(_Model):
     crf: int = Field(20, ge=14, le=35, description="Chất lượng H.264: thấp hơn = đẹp hơn, nặng hơn")
     encoder_preset: Literal["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow"] = "medium"
     audio_bitrate: str = Field("192k", pattern=r"^\d{2,3}k$")
-    normalize_audio: bool = Field(True, description="Chuẩn hoá loudness về -14 LUFS (chuẩn TikTok/YouTube)")
+    normalize_audio: bool = Field(True, description="Chuẩn hoá loudness về `loudness` LUFS, true peak < -1 dBTP")
+    loudness: float = Field(-14, ge=-24, le=-9, description="Mục tiêu LUFS: -14 chuẩn TikTok/YouTube; video ASMR / "
+                                                           "tiếng thật giòn nên -16 để limiter không ăn mất độ giòn")
     thumbnail_at: float | None = Field(None, ge=0, description="Xuất ảnh thumbnail tại giây này")
 
 

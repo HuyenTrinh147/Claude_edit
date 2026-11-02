@@ -20,6 +20,7 @@ HUD_FONT = "Chakra Petch"   # techy HUD labels (bundled, Vietnamese OK)
 REWARD_FONT = "Bungee"      # chunky reward text (bundled, Vietnamese OK)
 DARK = "#07121C"
 BASE_LAYER = 20
+LAYERS_PER_ITEM = 10
 
 
 # ---- easing ---------------------------------------------------------------------------------------
@@ -603,7 +604,7 @@ def _chip(pen: Pen, slot: str, sub: int, x: float, y: float, r: float, item: Slo
     if icon:
         for n, (path, role) in enumerate(icon_path(icon, r * 1.2)):
             moved = [(op, [(px + x, py + y) for px, py in pts]) for op, pts in path]
-            pen.shape(f"{slot}i{n}", sub + 1, moved, fill=DARK if role == "fill" else item.accent_color)
+            pen.shape(f"{slot}i{n}", sub + 1 + n, moved, fill=DARK if role == "fill" else item.accent_color)
     elif i < len(item.items):
         pen.text(slot + "t", sub + 1, x, y, item.items[i][:4], size=r * 0.95, color=DARK)
 
@@ -736,14 +737,15 @@ def _icon(item: Icon, pen: Pen, t: float) -> None:
             draw_sprite(pen, "spr", 2, 0, 0, size, art, squash=sx)
         pen.env.rot, pen.env.dy = saved
         return
-    for n, (path, role) in enumerate(icon_path(item.icon, size)):
+    for n, (path, role) in enumerate(icon_path(item.icon, size)):   # parts stack in list order
         path = [(op, [(x * sx, y) for x, y in pts]) for op, pts in path]
+        sub = 1 + n
         if role == "fill":
-            pen.shape(f"p{n}", 1, path, fill=item.accent_color, border=max(size * 0.045, 3), border_color=DARK)
+            pen.shape(f"p{n}", sub, path, fill=item.accent_color, border=max(size * 0.045, 3), border_color=DARK)
         elif role == "detail_bg":
-            pen.shape(f"p{n}", 2, path, fill=DARK, opacity=0.85)
+            pen.shape(f"p{n}", sub, path, fill=DARK, opacity=0.85)
         else:
-            pen.shape(f"p{n}", 2, path, fill=DARK, opacity=0.55)
+            pen.shape(f"p{n}", sub, path, fill=DARK, opacity=0.55)
     pen.env.rot, pen.env.dy = saved
 
 
@@ -1000,7 +1002,7 @@ def hud_events(plan: EditPlan, world: World, fonts: FontBook, default_font: str)
             _slash(item, pen, t, W)
 
     for idx, item in enumerate(plan.hud):
-        layer = BASE_LAYER + idx * 6
+        layer = BASE_LAYER + idx * LAYERS_PER_ITEM
         k0 = max(math.ceil(item.start * fps - 1e-9), 0)
         k1 = min(math.ceil(item.end * fps - 1e-9), world.total)   # exclusive
         runs: dict[str, list] = {}   # slot -> [first_frame, last_frame, layer, text]

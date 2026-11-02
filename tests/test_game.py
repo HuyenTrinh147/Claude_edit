@@ -175,8 +175,11 @@ def test_every_hud_type_produces_events():
     plan = color_plan(hud=ALL_HUD)
     ass = build_ass(plan, "DejaVu Sans", Path("assets/fonts"), fps=30)
     layers = {int(m.group(1)) for m in re.finditer(r"^Dialogue: (\d+),", ass, re.M)}
+    from vedit.hud import BASE_LAYER, LAYERS_PER_ITEM
+
     for idx in range(len(ALL_HUD)):   # every item drew something on its own layer band
-        assert any(20 + idx * 6 <= layer < 26 + idx * 6 for layer in layers), ALL_HUD[idx]["type"]
+        lo = BASE_LAYER + idx * LAYERS_PER_ITEM
+        assert any(lo <= layer < lo + LAYERS_PER_ITEM for layer in layers), ALL_HUD[idx]["type"]
     assert "72:00:00"[:2] in ass and "PERFECT!" in ass and "HOLD TO SEAL" in ass
 
 
@@ -343,3 +346,20 @@ def test_anchored_items_stay_inside_the_safe_area(tmp_path):
     xs += [float(x) for ln in lines if r"\p1}" in ln
            for x in re.findall(r"(-?[\d.]+) -?[\d.]+", ln.split(r"\p1}")[1].split("{")[0])]
     assert xs and max(xs) <= 851
+
+
+def test_clock_hands_draw_above_the_face_and_items_keep_their_layer_band():
+    plan = color_plan(hud=[{"type": "icon", "start": 0, "end": 1, "icon": "clock", "enter": "none", "exit": "none"},
+                           {"type": "icon", "start": 0, "end": 1, "icon": "star", "enter": "none", "exit": "none"}])
+    lines = hud_events(plan, World(plan, None, 30), FontBook(), "DejaVu Sans")
+    clock = sorted(int(ln.split(",")[0].split()[1]) for ln in lines if ln.startswith("Dialogue: 2"))
+    assert len(set(clock)) >= 4                       # face and both hands on their own layers, in order
+    layers = [int(ln.split(",")[0].split()[1]) for ln in lines]
+    first, second = [lay for lay in layers if lay < 30], [lay for lay in layers if lay >= 30]
+    assert first and second and max(first) < min(second)
+
+
+def test_loudness_target_reaches_loudnorm(tmp_path):
+    plan = color_plan(export={"loudness": -16}, audio=[{"path": "sfx:pop", "role": "sfx"}])
+    cmd = build_command(plan, tmp_path / "x.mp4", base_dir=tmp_path, work_dir=tmp_path / "w", font="DejaVu Sans")
+    assert "loudnorm=I=-16:TP=-2" in cmd[cmd.index("-filter_complex") + 1]
