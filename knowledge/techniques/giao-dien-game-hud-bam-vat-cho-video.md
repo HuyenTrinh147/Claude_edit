@@ -91,9 +91,17 @@ vào túi, combo cao dần ×4–×7 bằng `pitch`, khoá mục tiêu = `lock`,
 tiếng thật (vẫn kêu SAU tiếng thật 10–20 ms), và nhạc nền nhẹ:
 `vedit music <dự án> --duration <giây>` → `<dự án>/audio/bed-pastel.wav` (hộp nhạc / kalimba, 8 ô nhịp vừa đúng độ dài
 video, ô cuối kết bằng chuông + hợp âm giữ — rơi đúng lúc thẻ qua màn). Thêm vào plan:
-`{"path": "audio/bed-pastel.wav", "role": "music", "volume": 0.075, "duck": false, "loop": false, "fade_in": 0.4,
-"fade_out": 1.6}` — không duck (nhiều SFX sẽ làm nhạc "thở" liên tục). Cân bằng đã dùng (đo trước loudnorm):
-tiếng thật −36,8 LUFS, tiếng game −34, nhạc −41 → bản xuất −15,4 LUFS.
+`{"path": "audio/bed-pastel.wav", "role": "music", "volume": 0.05, "duck": false, "loop": false, "fade_in": 0.4,
+"fade_out": 0.6}` — không duck (nhiều SFX sẽ làm nhạc "thở" liên tục; mô phỏng duck cũng không hạ được lỗ im). Cân bằng
+đã dùng (đo trước loudnorm): tiếng thật −36,8 LUFS, tiếng game −35,2, nhạc −44,9 → bản xuất −15,7 LUFS, true peak −1,6 dBTP.
+
+**Cao độ SFX theo giọng nhạc nền** (nhạc `vedit music` ở Đô trưởng): nốt game lạc tông nghe "sai" dù rất nhỏ. Dịch bán cung
+(`pitch`) theo nốt nằm trong giọng: `combo` (arpeggio Sol trưởng) −7, −2, 0, 5, 10, 12, 17 = Đô–Fa–Sol–Đô–Fa–Sol–Đô leo dần
+×1…×7; `pickup` (Đô trưởng) 0, 5, 7, 12; `coin` 0, 3, 5, 8; `lock` 0, ±5, 7; `sparkle` 0, 5, 7; `ding` 0, 5, 7, 9.
+Bộ dựng tự `lowpass` 6,5 kHz SAU bước dịch cao độ (nếu không, +12 bán cung làm bộ lọc 7,5 kHz thành 15 kHz → chói).
+Quy tắc đã rút ra từ phản biện: SFX luôn kêu SAU tiếng thật 10–60 ms; không quá 3 tiếng trong 0,3 s; nhạc nền ≤ 8 dB dưới
+tiếng thật tính cả bài (−45 LUFS khi tiếng thật −37) để lỗ im trước cú giòn vẫn còn tương phản; tiếng game cao dần thì
+giảm volume theo độ cao (chói hơn).
 
 ## 5. Dừng hình — `Clip.freeze`
 `"freeze": 1.2` giữ khung cuối của clip thêm 1.2s (tiếng gốc im, zoom chậm vẫn chạy) — chỗ cho `card` hoàn thành

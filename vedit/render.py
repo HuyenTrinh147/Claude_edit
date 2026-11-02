@@ -375,7 +375,9 @@ def build_command(
     for k, track in enumerate(plan.audio):
         pitch = [f"asetrate={SAMPLE_RATE * 2 ** (track.pitch / 12):.2f}"] if track.pitch else []
         if track.builtin is not None:
-            chain = [SFX[track.builtin], *pitch, AUDIO_FMT, f"volume={track.volume:g}"]
+            # lowpass AFTER the pitch shift: the chiptune filters sit before asetrate, so +12 semitones would double
+            # their cutoff (7.5 -> 15 kHz) and make high pitched blips piercing next to real kitchen sounds
+            chain = [SFX[track.builtin], *pitch, AUDIO_FMT, "lowpass=f=6500", f"volume={track.volume:g}"]
             if track.start > 0:
                 chain.append(f"adelay=delays={int(track.start * 1000)}:all=1")
             graph.append(f"{','.join(chain)}[t{k}]")

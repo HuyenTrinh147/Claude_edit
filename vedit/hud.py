@@ -648,8 +648,10 @@ def _popup(item: Popup, pen: Pen, t: float, H: int) -> None:
         pen.shape("ring", 0, arc(0, 0, sz * (0.6 + 1.8 * ease_out(p)), sz * 0.08 * (1 - p) + 1, 0, 360),
                   fill="#FFFFFF", opacity=0.8 * (1 - p))
     # a thick outline eats the gaps between words in a long line: open the letter spacing a little (pastel font)
-    gap = sz * 0.05 if pen.theme.sticker and len(item.text) > 12 else 0.0
-    pen.text("text", 3, 0, 0, item.text, size=sz, color=item.accent_color, font=item.font or pen.reward_font,
+    long_line = pen.theme.sticker and len(item.text) > 12
+    gap = sz * 0.05 if long_line else 0.0
+    text = item.text.replace(" ", "  ") if long_line else item.text   # double spaces: words stay apart
+    pen.text("text", 3, 0, 0, text, size=sz, color=item.accent_color, font=item.font or pen.reward_font,
              outline=sz * 0.085, outline_color=pen.theme.pop_outline, shadow=(sz * 0.05, sz * 0.07),
              shadow_color=item.shadow_color, rot=item.tilt, spacing=gap)
     if item.sub:
