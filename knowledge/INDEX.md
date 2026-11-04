@@ -46,6 +46,15 @@ _Tự động tạo bởi vedit — đừng sửa tay._
 - [video-use: Phá khuôn sáng tạo bằng SCAMPER và đảo giả định](scripting/video-use-pha-khuon-sang-tao-bang-scamper-va-dao-gia-dinh.md) — _video-use, sáng tạo, ý tưởng, concept, scamper, đảo giả định, kịch bản, thiếu sáng tạo_
 - [video-use: Quy trình hỏi, đề xuất chiến lược và chờ duyệt](scripting/video-use-quy-trinh-hoi-de-xuat-chien-luoc-va-cho-duyet.md) — _video-use, quy trình, chiến lược, hỏi người dùng, xác nhận, memory, project.md, đúng ý_
 
+## content — Nội dung & copywriting: ý tưởng, hook, caption, hashtag, quy trình tạo nội dung bằng AI, cổng chất lượng chống văn AI, đa nền tảng, series / lịch đăng
+
+- [Bản đồ 9 repo AI content generator](content/ban-do-9-repo-ai-content-generator.md) — _github, ai-content-generator, giấy phép, bản đồ nguồn, agent-4_
+- [Chuyển thể đa nền tảng, lịch đăng và series](content/chuyen-the-da-nen-tang-lich-dang-va-series.md) — _đa nền tảng, giới hạn ký tự, lịch đăng, series, video thành bài đăng, transcript, agent-4_
+- [Cổng chất lượng chống văn AI và bảng tiếng Việt](content/cong-chat-luong-chong-van-ai-va-bang-tieng-viet.md) — _chống văn AI, hedgehog-core, tells, burstiness, cổng kiểm tra, tiếng Việt, agent-4_
+- [Khung viết hook, kịch bản, caption, hashtag và UGC](content/khung-viet-hook-kich-ban-caption-hashtag-va-ugc.md) — _hook, kịch bản, caption, hashtag, UGC, quảng cáo, voiceover, agent-4_
+- [Lỗi và rủi ro của các repo AI content generator](content/loi-va-rui-ro-cua-cac-repo-ai-content-generator.md) — _rủi ro, bịa số liệu, prompt injection, lộ khoá API, giấy phép, đồng phục, kiểm chứng, agent-4_
+- [Quy trình tạo nội dung bằng AI từ brief đến lịch đăng](content/quy-trinh-tao-noi-dung-bang-ai-tu-brief-den-lich-dang.md) — _pipeline, brief, chiến lược, dàn ý, biên tập, cổng duyệt, agent-4_
+
 ## trends — Xu hướng & format đang hot trên TikTok / Reels / Shorts
 
 - [Phong cách dựng nhịp nhanh: velocity, Hormozi, MrBeast](trends/phong-cach-dung-nhip-nhanh-velocity-hormozi-mrbeast.md) — _velocity edit, hormozi, mrbeast, retention editing, capcut, template, beat sync, xu hướng 2026_
