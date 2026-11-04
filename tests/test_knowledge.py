@@ -36,3 +36,14 @@ def test_save_overwrites_same_title(tmp_path):
 def test_invalid_category(tmp_path):
     with pytest.raises(ValueError):
         KnowledgeBase(tmp_path).save("x", "random", "y")
+
+
+def test_content_category_for_the_content_creator_agent(tmp_path):
+    kb = KnowledgeBase(tmp_path)
+    note = kb.save("Cổng chất lượng chống văn AI", "content", "Xoá cụm sáo rỗng, thêm chi tiết cụ thể.",
+                   ["copywriting", "chat luong"], ["https://example.com"])
+    assert note.ref == "content/cong-chat-luong-chong-van-ai"
+    assert "content/cong-chat-luong-chong-van-ai.md" in (tmp_path / "INDEX.md").read_text(encoding="utf-8")
+    assert kb.search("sao rong", category="content")[0][0].ref == note.ref
+    with pytest.raises(ValueError, match="content"):
+        kb.save("x", "nope", "y")   # the error lists the valid categories, content among them

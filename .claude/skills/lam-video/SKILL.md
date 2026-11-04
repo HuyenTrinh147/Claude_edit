@@ -34,7 +34,8 @@ bước). Trao đổi bằng tiếng Việt, ngắn gọn; báo tiến độ sau
    sửa rồi phản biện lại (tối đa 2 vòng). Chưa ĐẠT sau 2 vòng thì nói thật với người dùng điều còn vướng.
 9. **Xuất**: `video-editor` chạy `vedit render <slug>` (bản cũ tự vào `renders/history/`).
 10. **Gửi kết quả** bằng SendUserFile: `renders/final.mp4`, `final.jpg`, `script/concepts.md` (hoặc `script.md`), kèm
-    tóm tắt hướng đã dựng và điểm nhấn; hỏi cảm nhận của người dùng.
+    tóm tắt hướng đã dựng và điểm nhấn; hỏi cảm nhận của người dùng và hỏi có muốn **gói nội dung đăng bài** (caption,
+    hashtag, bình luận ghim, series, lịch đăng) không — có thì chạy skill `noi-dung` cho dự án này (Agent 4).
 11. **Học từ phản hồi**: khi người dùng khen/chê, ghi nguyên văn `vedit note <slug> "..." --kind "phản hồi"`, cập nhật
     `profile/gu-nguoi-dung.md` (thích / không thích / bài học), commit + push file hồ sơ.
 12. **Google Drive** (khi người dùng muốn): dùng công cụ Google Drive đang kết nối — tạo thư mục `vedit/<slug>` và Google

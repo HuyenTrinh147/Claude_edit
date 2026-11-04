@@ -15,6 +15,8 @@ from pathlib import Path
 CATEGORIES: dict[str, str] = {
     "techniques": "Kỹ thuật dựng: nhịp cắt, chuyển cảnh, J/L-cut, zoom, màu, hiệu ứng",
     "scripting": "Kịch bản: hook, cấu trúc, storytelling, CTA, viết lời thoại",
+    "content": "Nội dung & copywriting: ý tưởng, hook, caption, hashtag, quy trình tạo nội dung bằng AI, cổng chất lượng "
+               "chống văn AI, đa nền tảng, series / lịch đăng",
     "trends": "Xu hướng & format đang hot trên TikTok / Reels / Shorts",
     "platforms": "Đặc thù nền tảng: kích thước, độ dài, vùng an toàn, thuật toán phân phối",
     "audio": "Âm thanh: nhạc nền, giọng đọc, SFX, loudness",

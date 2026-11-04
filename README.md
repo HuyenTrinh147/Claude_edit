@@ -8,6 +8,7 @@ bằng 3 agent dùng Claude + ffmpeg:
 | **Agent 1 — Nghiên cứu** | `vedit research` | Tìm hiểu kỹ thuật edit trên **GitHub, web, YouTube, TikTok**, chắt lọc thành ghi chú trong kho kiến thức `knowledge/` |
 | **Agent 2 — Trend & kịch bản** | `vedit script` | Phân tích video bạn đưa vào, nghiên cứu **trend, từ khoá, hashtag** hiện tại, viết **kịch bản** + **EditPlan** (kế hoạch dựng); tuỳ chọn tạo **thư mục Google Drive** |
 | **Agent 3 — Dựng & xuất** | `vedit edit` | Dựng theo EditPlan, render bản xem trước, **tự xem lại khung hình để sửa lỗi**, rồi **xuất video** + thumbnail |
+| **Agent 4 — Content Creator** | `/noi-dung` (Claude Code) | Nghĩ **ý tưởng, hook, lời thoại, chữ trên màn hình, caption, hashtag, series / lịch đăng**, có cổng chất lượng chống "văn AI" (chưa có bản Claude API) |
 | **Agent phản biện** | (trong Claude Code) | Soi lỗi bản xem trước — đối chiếu hướng đã duyệt, gu của bạn và luật dựng — trước khi giao video |
 
 **Quy trình**: phân tích video → Agent 2 **đề xuất 2–3 hướng dựng khác hẳn nhau** → **bạn chọn** (hoặc đưa ý tưởng riêng,
@@ -186,7 +187,7 @@ dùng thư mục trong Shared Drive.)
 
 ## Dùng ngay trong Claude Code (không cần cài, không cần API key)
 
-Mở repo này trong Claude Code (web, app hoặc CLI) rồi chat. Claude điều phối 3 subagent trong `.claude/agents/`
+Mở repo này trong Claude Code (web, app hoặc CLI) rồi chat. Claude điều phối 5 subagent trong `.claude/agents/`
 (`video-researcher`, `video-scriptwriter`, `video-editor`) bằng công cụ web/Bash có sẵn của Claude Code, nên
 **không cần ANTHROPIC_API_KEY riêng**. Lần đầu mỗi phiên, Claude tự chạy `bash scripts/setup.sh` để cài `vedit`.
 
@@ -196,6 +197,7 @@ Mở repo này trong Claude Code (web, app hoặc CLI) rồi chat. Claude điề
 | `/kich-ban <link video> <mục tiêu>` | Agent 2: chỉ ý tưởng + kịch bản (+ lưu Google Doc lên Drive) |
 | `/sua-video <dự án> <yêu cầu>` | Agent 3: sửa bằng lời ("chữ to hơn, bỏ cảnh 3") và xuất lại |
 | `/nghien-cuu <chủ đề>` | Agent 1: nghiên cứu & lưu vào kho kiến thức |
+| `/noi-dung <dự án hoặc chủ đề> <mục tiêu>` | Agent 4: ý tưởng, hook, lời thoại, caption, hashtag, series (content creator) |
 
 Hoặc nói tự nhiên: *"dựng video này thành TikTok 30s review quán cà phê, lưu kịch bản lên Drive"*.
 

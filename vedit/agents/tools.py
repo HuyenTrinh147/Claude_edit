@@ -44,7 +44,7 @@ def knowledge_tools(kb: KnowledgeBase, *, writable: bool) -> list:
 
         Args:
             query: Từ khoá tìm kiếm (tiếng Việt hoặc tiếng Anh).
-            category: Lọc theo nhóm: techniques, scripting, trends, platforms, audio, tools, ffmpeg.
+            category: Lọc theo nhóm: techniques, scripting, content, trends, platforms, audio, typography, tools, ffmpeg.
             limit: Số kết quả tối đa.
         """
         hits = kb.search(query, limit=limit, category=category)
@@ -72,7 +72,7 @@ def knowledge_tools(kb: KnowledgeBase, *, writable: bool) -> list:
 
             Args:
                 title: Tiêu đề ngắn, cụ thể (tiếng Việt).
-                category: Một trong: techniques, scripting, trends, platforms, audio, tools, ffmpeg.
+                category: Một trong: techniques, scripting, content, trends, platforms, audio, typography, tools, ffmpeg.
                 content: Nội dung Markdown: tóm tắt, các bước áp dụng, ví dụ / lệnh cụ thể, lưu ý.
                 tags: 3-8 từ khoá để tìm lại.
                 sources: Các URL nguồn đã thực sự đọc (bắt buộc ít nhất 1).
