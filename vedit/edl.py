@@ -47,7 +47,9 @@ TextAnimation = Literal[
 LOOK_PRESETS = ("none", "warm_food", "bright_clean", "film", "moody", "vivid", "bw")
 BUILTIN_SFX = ("pop", "click", "ding", "sparkle", "whoosh", "thud", "rise",
                # chiptune game sounds (square / triangle waves)
-               "pickup", "lock", "combo", "levelup", "slash", "zip", "coin", "tick", "complete", "buzz")
+               "pickup", "lock", "combo", "levelup", "slash", "zip", "coin", "tick", "complete", "buzz",
+               # comedy
+               "meow", "boing")
 
 
 class _Model(BaseModel):
@@ -200,6 +202,10 @@ class ImageOverlay(_Model):
     y: float = Field(0.1, ge=0, le=1, description="Tâm dọc theo tỉ lệ khung (0..1)")
     width: float = Field(0.25, gt=0, le=1, description="Chiều rộng theo tỉ lệ khung")
     opacity: float = Field(1.0, ge=0, le=1)
+    rotation: float = Field(0, ge=-180, le=180, description="Xoay quanh TÂM ảnh (độ). Muốn xoay quanh một đầu (búa vung từ "
+                                                            "cán), đệm trong suốt để đầu đó nằm đúng tâm ảnh")
+    swing: float = Field(0, ge=0, le=90, description="Biên độ lắc qua lại quanh `rotation` (độ), tính từ lúc `start`")
+    swing_hz: float = Field(1.5, gt=0, le=10, description="Số nhịp lắc mỗi giây")
 
 
 class Graphic(_Model):

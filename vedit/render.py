@@ -143,6 +143,13 @@ def _chip(expr: str, dur: float, lowpass: int = 7500) -> str:
 C5, E5, G5, B5, C6, D6, E6, G6, B6, C7, D7 = 523.25, 659.25, 783.99, 987.77, 1046.5, 1174.7, 1318.5, 1568.0, \
     1975.5, 2093.0, 2349.3
 SFX.update({
+    # a whiny cat: pitch glides up then down with vibrato and a nasal second harmonic
+    "meow": "aevalsrc='0.5*(sin(2*PI*(480*t+260*sin(PI*t/0.7)*t+9*sin(2*PI*7*t)/(2*PI*7)))"
+            "+0.45*sin(4*PI*(480*t+260*sin(PI*t/0.7)*t))+0.2*sin(6*PI*480*t))*min(t/0.04,1)*exp(-max(t-0.45,0)*7)'"
+            ":s=48000:d=0.8,lowpass=f=5200",
+    # cartoon spring
+    "boing": "aevalsrc='0.55*sin(2*PI*(220+380*exp(-t*9)*sin(2*PI*14*t))*t)*exp(-t*5)':s=48000:d=0.7",
+
     # item picked up: quick rising arpeggio
     "pickup": _chip(f"0.26*{_sq(_steps([C6, E6, G6, C7], 0.04))}*if(lt(t,0.16),1,exp(-(t-0.16)*30))", 0.26),
     # coin: the classic two-note ding
@@ -352,7 +359,11 @@ def build_command(
     for k, img in enumerate(plan.images):
         idx = add_input("-loop", "1", "-t", _num(total + 1), "-i", str(plan.resolve(img.path, base_dir)))
         end = img.end if img.end is not None else total
-        graph.append(f"[{idx}:v]scale={_even(img.width * W)}:-2,format=rgba,"
+        spin = ""
+        if img.rotation or img.swing:   # rotate about the centre; the corners stay transparent
+            angle = f"{img.rotation:g}+{img.swing:g}*sin(2*PI*{img.swing_hz:g}*(t-{img.start:g}))"
+            spin = f"rotate=a='({angle})*PI/180':c=none:ow='hypot(iw,ih)':oh='hypot(iw,ih)',"
+        graph.append(f"[{idx}:v]scale={_even(img.width * W)}:-2,format=rgba,{spin}"
                      f"colorchannelmixer=aa={img.opacity:g}[img{k}]")
         graph.append(f"[{cur_v}][img{k}]overlay=x='{img.x:g}*W-w/2':y='{img.y:g}*H-h/2':"
                      f"enable='between(t,{_num(img.start)},{_num(end)})':eof_action=pass[vi{k}]")
