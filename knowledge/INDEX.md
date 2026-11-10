@@ -6,6 +6,7 @@ _Tự động tạo bởi vedit — đừng sửa tay._
 
 - [Bản đồ năng lực dựng: vedit đã có và còn thiếu](techniques/ban-do-nang-luc-dung-vedit-da-co-va-con-thieu.md) — _vedit, năng lực, khoảng trống, roadmap, ưu tiên, editplan, ffmpeg, libass, đề xuất tính năng_
 - [Bộ công cụ đồ hoạ & hiệu ứng của vedit](techniques/bo-cong-cu-do-hoa-hieu-ung-cua-vedit.md) — _vedit, đồ hoạ, motion graphics, animation, callout, sfx, look, editplan_
+- [Chiêu chữ ký của 3 video mẫu ref-mim: quay màn hình app dựng rồi ra kết quả, nhân bản vật, nền mờ](techniques/chieu-chu-ky-3-video-mau-ref-mim-quay-man-hinh-roi-ket-qua.md) — _tiktok, capcut, screen-recording, nhan-ban-vat, blur-fill, mau-3-video_
 - [Chuyển cảnh sáng tạo: whip pan, zoom, light leak, glitch](techniques/chuyen-canh-sang-tao-whip-pan-zoom-light-leak-glitch.md) — _transition, chuyển cảnh, whip pan, zoom transition, light leak, glitch, flash, easing, xfade, motion blur_
 - [Dựng video nấu ăn, ASMR và satisfying](techniques/dung-video-nau-an-asmr-va-satisfying.md) — _nấu ăn, ẩm thực, asmr, satisfying, silent vlog, money shot, macro, time-lapse, onset, cà pháo_
 - [Giao diện game (HUD) bám vật thật — biến video thành màn chơi](techniques/giao-dien-game-hud-bam-vat-cho-video.md) — _vedit, hud, game, vr, ar, tracking, bám vật, reticle, combo, chiptune, freeze frame, editplan_
@@ -15,6 +16,7 @@ _Tự động tạo bởi vedit — đừng sửa tay._
 - [Nhịp cắt và kỹ thuật giữ chân người xem](techniques/nhip-cat-va-ky-thuat-giu-chan-nguoi-xem.md) — _nhịp, pacing, độ dài cảnh, asl, pattern interrupt, retention editing, hook, loop, jump cut_
 - [Phụ đề viral: từng từ, highlight, emoji](techniques/phu-de-viral-tung-tu-highlight-emoji.md) — _phụ đề, caption, karaoke, word-by-word, highlight, hormozi, emoji, libass, pycaps, safe zone_
 - [Speed ramp, freeze frame, keyframe zoom và split screen](techniques/speed-ramp-freeze-frame-keyframe-zoom-va-split-screen.md) — _speed ramp, slow motion, velocity, freeze frame, keyframe, easing, zoompan, ken burns, punch-in, shake, parallax, split screen_
+- [Số đo nhịp cắt, tốc độ, âm thanh của 3 video mẫu ref-mim](techniques/so-do-nhip-cat-toc-do-am-thanh-3-video-mau-ref-mim.md) — _nhip-cat, speed-ramp, am-thanh, loudness, tiktok, mau-3-video_
 - [Tư duy dựng sáng tạo cho video ngắn](techniques/tu-duy-dung-sang-tao-cho-video-ngan.md) — _luật dựng, quy tắc, sáng tạo, phong cách, duyệt, guardrails, nhịp, payoff_
 - [buttercut: Agent dựng bản cắt thô theo beat và vòng rà soát](techniques/buttercut-agent-dung-ban-cat-tho-theo-beat-va-vong-ra-soat.md) — _agent dựng, roughcut, beat, rà soát, nhịp, ghi chú biên tập, prompt, buttercut_
 - [buttercut: Cắt theo mốc từng từ, giữ thoại liền mạch](techniques/buttercut-cat-theo-moc-tung-tu-giu-thoai-lien-mach.md) — _word-level, điểm cắt, transcript, whisperx, thoại, jump cut, buttercut_
@@ -59,6 +61,7 @@ _Tự động tạo bởi vedit — đừng sửa tay._
 
 - [Phong cách dựng nhịp nhanh: velocity, Hormozi, MrBeast](trends/phong-cach-dung-nhip-nhanh-velocity-hormozi-mrbeast.md) — _velocity edit, hormozi, mrbeast, retention editing, capcut, template, beat sync, xu hướng 2026_
 - [Phong cách vlog thẩm mỹ: silent vlog, Douyin, cinematic, POV](trends/phong-cach-vlog-tham-my-silent-vlog-douyin-cinematic-pov.md) — _silent vlog, vlog hàn quốc, douyin, li ziqi, cinematic vlog, pov, aesthetic, slow living, asmr, xu hướng 2026_
+- [Định dạng "học edit nhanh": quay màn hình app dựng rồi kết quả (quan sát 2026-11, mẫu 3 video)](trends/dinh-dang-video-hoc-edit-nhanh-quay-man-hinh-roi-ket-qua.md) — _tiktok, tutorial, capcut, dinh-dang, mau-3-video_
 
 ## platforms — Đặc thù nền tảng: kích thước, độ dài, vùng an toàn, thuật toán phân phối
 

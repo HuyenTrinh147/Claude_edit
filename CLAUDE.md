@@ -13,7 +13,7 @@ subagent, chưa có bản Claude API), `video-critic` (phản biện). Subagent 
 
 - Đầu phiên, nếu `command -v vedit` không thấy lệnh: `bash scripts/setup.sh` (tạo .venv, cài, đưa `vedit` ra PATH).
 - Lệnh tắt (`.claude/skills/`): `/lam-video` (trọn quy trình), `/kich-ban` (Agent 2), `/sua-video` (Agent 3),
-  `/nghien-cuu` (Agent 1), `/noi-dung` (Agent 4). Người dùng nói tự nhiên thì làm đúng quy trình của skill tương ứng.
+  `/nghien-cuu` (Agent 1), `/noi-dung` (Agent 4). Skill công thức edit học từ video mẫu (tuỳ chọn, chỉ dùng sau khi người dùng đã chọn hướng dựng): `/edit-nhip-cat-deu`, `/edit-toc-do-cong-chu-u`, `/edit-man-hinh-roi-ket-qua`, `/edit-nhan-ban-vat-theo-nhip`, `/edit-nen-mo-phong-to`. Người dùng nói tự nhiên thì làm đúng quy trình của skill tương ứng.
 - **Không bao giờ dựng khi người dùng chưa chọn hướng dựng**: Agent 2 đề xuất 2–3 hướng khác hẳn nhau
   (`script/concepts.md`), bạn hỏi bằng AskUserQuestion, ghi lựa chọn bằng `vedit note`. Ý tưởng riêng của người dùng
   (ví dụ "làm dưới dạng game AR") luôn được phát triển thành ít nhất một hướng.
