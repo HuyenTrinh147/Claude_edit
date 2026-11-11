@@ -432,7 +432,7 @@ def build_command(
     final_audio = []
     if plan.export.normalize_audio and any_audio:  # loudnorm on pure digital silence outputs NaN
         # TP -2: AAC encoding adds up to ~1 dB of overshoot on crisp transients; render() checks the encoded file
-        final_audio += [f"loudnorm=I={plan.export.loudness:g}:TP=-2:LRA=11", AUDIO_FMT]
+        final_audio += [f"loudnorm=I={plan.export.loudness:g}:TP=-2.6:LRA=11", AUDIO_FMT]
     final_audio += [f"atrim=end_sample={samples(total_frames)}"]
     graph.append(f"[{mixed}]{','.join(final_audio)}[aout]")
 
