@@ -17,7 +17,8 @@ Quy trình:
 1. Đọc `edit_plan.json` (schema: `vedit schema plan`). Áp dụng yêu cầu bằng cách sửa JSON. Clip `start/end` = giây
    NGUỒN; texts/captions/graphics/hud/motion/audio = giây TIMELINE — đổi độ dài hay thứ tự clip thì dời các mốc đó.
    Bảng công cụ để tra cứu: `vedit kb show techniques/bo-cong-cu-do-hoa-hieu-ung-cua-vedit`.
-2. `vedit validate <slug>` tới khi hợp lệ (media, font, ký tự thiếu).
+2. `vedit validate <slug>` tới khi hợp lệ (media, font, ký tự thiếu). Chữ mới nên dùng form dựng sẵn (`vedit styles`,
+   trường `texts[].style`) thay vì tự đặt từng thông số; sau khi sửa chữ chạy `vedit textcheck <slug>`.
 3. `vedit render <slug> --preview`, rồi tự kiểm tra bằng mắt và bằng số:
    - cả bài: `vedit sheet <slug> --source preview --count 16` → Read (nhịp, bố cục, độ lặp lại);
    - quanh MỖI điểm cắt: `vedit sheet <slug> --source preview --start <t-0.4> --end <t+0.4> --count 6` → Read

@@ -81,3 +81,62 @@ def test_overlap_and_missing_diacritics_warn():
     got = rules(r)
     assert ("chong-chu", "warn") in got and ("thieu-dau", "warn") in got
     assert r.errors == 0
+
+
+# ---- music styles + library index -------------------------------------------------------------------------
+
+@pytest.mark.parametrize("style,bpm", [("pastel", 108.0), ("beat", 120.0), ("lofi", 84.0)])
+def test_music_styles_are_deterministic_and_have_the_expected_tempo(tmp_path, style, bpm):
+    from vedit.musicgen import make_bed, render_bed
+
+    a, b = render_bed(20.0, style, seed=5), render_bed(20.0, style, seed=5)
+    assert a.shape == (2, 20 * 48000) and np.array_equal(a, b) and not np.array_equal(a, render_bed(20.0, style, seed=6))
+    path = make_bed(tmp_path / f"{style}.wav", 20.0, style, seed=5)
+    assert analyze_music(path).bpm == pytest.approx(bpm, abs=3)      # the bed is a whole number of bars at this BPM
+
+
+def test_music_catalog_covers_every_style():
+    from vedit.musicgen import CATALOG, STYLES
+
+    assert set(CATALOG) == set(STYLES)
+
+
+def test_library_index_keeps_hand_written_tags(tmp_path):
+    import json
+
+    from vedit.beat import write_library_index
+
+    row = {"path": str(tmp_path / "a.mp3"), "duration": 30.0, "bpm": 100.0, "confidence": 0.6, "first_beat": 0.1,
+           "best_window_start": 2.0, "mean_db": -20.0, "peak_db": -1.0}
+    index = tmp_path / "library.json"
+    write_library_index(index, [row], tmp_path)
+    data = json.loads(index.read_text(encoding="utf-8"))
+    data["tracks"][0].update(mood="vui", tags=["food"], note="hợp hook")
+    index.write_text(json.dumps(data), encoding="utf-8")
+    write_library_index(index, [{**row, "bpm": 101.0}], tmp_path)   # re-run after the analysis changed
+    track = json.loads(index.read_text(encoding="utf-8"))["tracks"][0]
+    assert (track["file"], track["bpm"], track["mood"], track["tags"], track["note"]) == ("a.mp3", 101.0, "vui", ["food"], "hợp hook")
+
+
+# ---- text style library -----------------------------------------------------------------------------------
+
+def test_every_text_style_is_a_valid_overlay_with_installed_fonts():
+    from pathlib import Path
+
+    from vedit.ass import check_fonts
+    from vedit.textstyles import STYLES
+
+    texts = [{"text": s.sample, "start": 0, "end": 3, "style": s.name} for s in STYLES.values()]
+    p = plan(texts)
+    assert [t.style for t in p.texts] == list(STYLES) and all(t.font for t in p.texts)
+    assert check_fonts(p, "Inter", Path("assets/fonts")) == []
+
+
+def test_explicit_fields_win_over_the_style_and_unknown_style_is_rejected():
+    from pydantic import ValidationError
+
+    p = plan([{"text": "1. Xắt", "start": 0, "end": 3, "style": "nhan-so-vang", "size": 60, "color": "#FF0000"}])
+    t = p.texts[0]
+    assert (t.size, t.color, t.font) == (60, "#FF0000", "Baloo 2")
+    with pytest.raises(ValidationError):
+        plan([{"text": "x", "start": 0, "end": 3, "style": "khong-co"}])

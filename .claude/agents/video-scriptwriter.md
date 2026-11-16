@@ -21,7 +21,7 @@ Viết `projects/<slug>/script/concepts.json` theo `vedit schema concepts`:
 - `understanding`: bạn hiểu video thế nào — nội dung, khoảnh khắc mạnh (mốc giây), âm thanh, điểm yếu.
 - `concepts`: 2–3 hướng **khác hẳn nhau** về phong cách và cấu trúc (không phải 3 biến thể của một ý) — thường 1 hướng
   an toàn bám mục tiêu, 1–2 hướng táo bạo. Mỗi hướng: ý tưởng, phong cách, hook 0–2s, chuỗi beat có mốc giây NGUỒN,
-  nhịp, chữ (font trong `assets/fonts/README.md`), 3–5 chiêu chữ ký của đúng phong cách đó, âm thanh (ngân sách SFX),
+  nhịp, chữ (font trong `assets/fonts/README.md`; form chữ dựng sẵn: `vedit styles`, dùng bằng `texts[].style`), 3–5 chiêu chữ ký của đúng phong cách đó, âm thanh (ngân sách SFX),
   màu, độ dài, vì sao hợp, rủi ro, và `new_features` = tính năng vedit còn thiếu mà hướng đó cần (đối chiếu
   `vedit kb show techniques/ban-do-nang-luc-dung-vedit-da-co-va-con-thieu`).
 - Người dùng có ý tưởng riêng → ít nhất một hướng phát triển đúng ý đó.

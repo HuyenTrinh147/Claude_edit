@@ -18,6 +18,7 @@ _Tự động tạo bởi vedit — đừng sửa tay._
 - [Speed ramp, freeze frame, keyframe zoom và split screen](techniques/speed-ramp-freeze-frame-keyframe-zoom-va-split-screen.md) — _speed ramp, slow motion, velocity, freeze frame, keyframe, easing, zoompan, ken burns, punch-in, shake, parallax, split screen_
 - [Số đo nhịp cắt, tốc độ, âm thanh của 3 video mẫu ref-mim](techniques/so-do-nhip-cat-toc-do-am-thanh-3-video-mau-ref-mim.md) — _nhip-cat, speed-ramp, am-thanh, loudness, tiktok, mau-3-video_
 - [Tư duy dựng sáng tạo cho video ngắn](techniques/tu-duy-dung-sang-tao-cho-video-ngan.md) — _luật dựng, quy tắc, sáng tạo, phong cách, duyệt, guardrails, nhịp, payoff_
+- [Video mẫu âm thanh làm video nấu ăn: đánh số tượng thanh + khung tìm âm thanh (ref-mim-4)](techniques/video-mau-am-thanh-lam-video-nau-an-danh-so-tuong-thanh-khun.md) — _mẫu âm thanh, đánh số, tượng thanh, khung tìm âm thanh, foley, nấu ăn, hook, ref-mim-4_
 - [buttercut: Agent dựng bản cắt thô theo beat và vòng rà soát](techniques/buttercut-agent-dung-ban-cat-tho-theo-beat-va-vong-ra-soat.md) — _agent dựng, roughcut, beat, rà soát, nhịp, ghi chú biên tập, prompt, buttercut_
 - [buttercut: Cắt theo mốc từng từ, giữ thoại liền mạch](techniques/buttercut-cat-theo-moc-tung-tu-giu-thoai-lien-mach.md) — _word-level, điểm cắt, transcript, whisperx, thoại, jump cut, buttercut_
 - [buttercut: Mẫu phối hợp agent, cổng kiểm tra và giao tiếp](techniques/buttercut-mau-phoi-hop-agent-cong-kiem-tra-va-giao-tiep.md) — _agent, sub-agent, điều phối, kiểm tra chất lượng, ux, giao tiếp, claude code, buttercut_
@@ -70,6 +71,7 @@ _Tự động tạo bởi vedit — đừng sửa tay._
 ## audio — Âm thanh: nhạc nền, giọng đọc, SFX, loudness
 
 - [Sound design nhiều lớp: ambience, foley, whoosh, riser, impact](audio/sound-design-nhieu-lop-ambience-foley-whoosh-riser-impact.md) — _sound design, sfx, ambience, room tone, foley, whoosh, riser, impact, asmr, aevalsrc, eq_
+- [Thư viện nhạc nền của vedit: pastel, beat, lofi + chỉ mục library.json](audio/thu-vien-nhac-nen-cua-vedit-pastel-beat-lofi-chi-muc-library.md) — _nhạc nền, bpm, beat, lofi, pastel, library.json, vedit music, vedit bpm_
 - [buttercut: Hiệu đính transcript mà không phá mốc thời gian](audio/buttercut-hieu-dinh-transcript-ma-khong-pha-moc-thoi-gian.md) — _transcript, whisper, phụ đề, hiệu đính, tên riêng, mốc từng từ, buttercut, tiếng việt_
 - [claude-video-editor: Âm thanh, fade 30ms và loudnorm 2 lượt](audio/claude-video-editor-am-thanh-fade-30ms-va-loudnorm-2-luot.md) — _claude-video-editor, âm thanh, afade, tiếng bụp, loudnorm, lufs, mix, sfx, audio-reactive, tts, elevenlabs v3_
 - [video-use: Âm thanh, fade 30ms, SFX đúng khung, loudnorm 2 lượt](audio/video-use-am-thanh-fade-30ms-sfx-dung-khung-loudnorm-2-luot.md) — _video-use, âm thanh, afade, sfx, ducking, loudnorm, ebur128, lufs, true peak, asmr, đo lường_
@@ -82,6 +84,7 @@ _Tự động tạo bởi vedit — đừng sửa tay._
 - [Kiểu chữ trend trên TikTok/Reels](typography/kieu-chu-trend-tren-tiktok-reels.md) — _trend, caption, hormozi, mrbeast, karaoke, viền kép, chữ 3d, sticker, emoji, tiktok sans, reels_
 - [Quy tắc chữ dễ đọc trên điện thoại](typography/quy-tac-chu-de-doc-tren-dien-thoai.md) — _dễ đọc, cỡ chữ, viền, bóng đổ, vùng an toàn, phụ đề, thời gian đọc, tiếng việt, captions_
 - [Thư viện font của vedit](typography/thu-vien-font-cua-vedit.md) — _font, tiếng việt, thư viện font, editplan, libass, fontbook, google fonts, ofl, tiktok sans, montserrat_
+- [Thư viện form chữ của vedit (preset texts[].style)](typography/thu-vien-form-chu-cua-vedit-preset-texts-style.md) — _form chữ, preset, style, texts, thư viện, tiêu đề, nhãn, phụ đề_
 - [claude-video-editor: Typography cho video và font tiếng Việt](typography/claude-video-editor-typography-cho-video-va-font-tieng-viet.md) — _claude-video-editor, typography, font tiếng việt, cặp font, độ đậm, google fonts, ofl, libass_
 
 ## tools — Công cụ, thư viện, repo GitHub hữu ích cho dựng video tự động

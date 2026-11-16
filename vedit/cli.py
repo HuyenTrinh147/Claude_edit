@@ -232,6 +232,16 @@ def cmd_music(args, settings) -> None:
     from .musicgen import make_bed
     from .project import Project
 
+    if args.list:
+        from .musicgen import CATALOG
+
+        print(f"{'style':<8} {'BPM':>4}  {'không khí':<34} dùng khi")
+        for name, (bpm, mood, use) in CATALOG.items():
+            print(f"{name:<8} {bpm:>4}  {mood:<34} {use}")
+        print("\nTạo: vedit music <dự án> --duration <giây> --style <tên> [--seed N]")
+        return
+    if args.duration is None or (not args.out and not args.project):
+        raise SystemExit("Cần --duration và <dự án> (hoặc --out); xem các kiểu nhạc: vedit music --list")
     out = Path(args.out).expanduser() if args.out else None
     if out is None:
         project = Project.open(settings, args.project)
@@ -375,6 +385,34 @@ def cmd_projects(args, settings) -> None:
         print(f"{p.slug:<45} {Path(p.data['input']).name:<30} {', '.join(flags)}")
 
 
+def cmd_styles(args, settings) -> None:
+    """Text-form library: list, show one (as a JSON snippet for an EditPlan), or render the gallery image."""
+    import json
+
+    from . import textstyles
+
+    if args.gallery:
+        out = textstyles.gallery(Path(args.gallery), settings.fonts_dir, settings.font)
+        print(f"✓ {out}")
+        return
+    if args.name:
+        try:
+            s = textstyles.get(args.name)
+        except ValueError as e:
+            raise SystemExit(str(e)) from None
+        print(f"{s.name} — {s.label}\n  Dùng khi: {s.use}\n  Nguồn: {s.source}")
+        if s.extras:
+            print(f"  Thêm đồ hoạ: {s.extras}")
+        print("  Ví dụ trong EditPlan.texts:\n  " + json.dumps(
+            {"text": s.sample, "start": 0.5, "end": 2.5, "style": s.name}, ensure_ascii=False))
+        print("  Giá trị preset: " + json.dumps(s.fields, ensure_ascii=False))
+        return
+    print(f"{'style':<26} {'font':<16} {'cỡ':>4}  dùng khi")
+    for s in textstyles.STYLES.values():
+        print(f"{s.name:<26} {s.fields['font']:<16} {s.fields['size']:>4}  {s.label}")
+    print("\nChi tiết: vedit styles <tên>   |   ảnh mẫu: vedit styles --gallery <file.jpg>")
+
+
 def cmd_bpm(args, settings) -> None:
     """Tempo / first beat / loudest window of music files (default: everything in assets/music)."""
     import json
@@ -386,6 +424,11 @@ def cmd_bpm(args, settings) -> None:
     if not files:
         raise SystemExit(f"Không có file nhạc nào trong {target} (thả .mp3/.wav/.m4a vào đó)")
     rows = [analyze_music(f, window=args.window).to_dict() for f in files]
+    if args.index:
+        from .beat import write_library_index
+
+        index = write_library_index(settings.music_dir / "library.json", rows, settings.music_dir)
+        print(f"✓ {index} ({len(rows)} bài) — mở file, điền `mood` / `tags` / `note` cho từng bài; lần sau chạy lại sẽ giữ nguyên.")
     if args.json:
         print(json.dumps(rows, ensure_ascii=False, indent=2))
         return
@@ -583,10 +626,11 @@ def build_parser() -> argparse.ArgumentParser:
     sxl.add_argument("--limit", type=int, default=40)
     sx.set_defaults(func=cmd_sfx)
 
-    mu = sub.add_parser("music", help="Tạo nhạc nền ngắn bằng code (không file, không bản quyền): hộp nhạc / kalimba nhẹ")
-    mu.add_argument("project", help="Tên dự án (file lưu ở <dự án>/audio/) — bỏ qua nếu dùng --out")
-    mu.add_argument("--duration", type=float, required=True, help="Độ dài giây (thường = độ dài video)")
-    mu.add_argument("--style", choices=["pastel"], default="pastel")
+    mu = sub.add_parser("music", help="Tạo nhạc nền ngắn bằng code (không file, không bản quyền): pastel hộp nhạc, beat có trống, lofi êm")
+    mu.add_argument("project", nargs="?", help="Tên dự án (file lưu ở <dự án>/audio/) — bỏ qua nếu dùng --out / --list")
+    mu.add_argument("--duration", type=float, help="Độ dài giây (thường = độ dài video)")
+    mu.add_argument("--style", choices=["pastel", "beat", "lofi"], default="pastel")
+    mu.add_argument("--list", action="store_true", help="Liệt kê các kiểu nhạc (BPM, không khí, dùng khi)")
     mu.add_argument("--bpm", type=float, help="Mặc định tự chọn để nhạc dài đúng số ô nhịp nguyên")
     mu.add_argument("--seed", type=int, default=7)
     mu.add_argument("--out", help="File .wav xuất ra")
@@ -620,10 +664,16 @@ def build_parser() -> argparse.ArgumentParser:
     dy.add_argument("--no-renders", action="store_true")
     d.set_defaults(func=cmd_drive)
 
+    sy = sub.add_parser("styles", help="Thư viện form chữ (preset cho texts[].style): liệt kê, xem chi tiết, ảnh mẫu")
+    sy.add_argument("name", nargs="?", help="Tên style để xem chi tiết")
+    sy.add_argument("--gallery", metavar="FILE.jpg", help="Render ảnh mẫu tất cả style")
+    sy.set_defaults(func=cmd_styles)
+
     bp = sub.add_parser("bpm", help="Đo nhịp (BPM), nhịp đầu, đoạn sôi nổi, âm lượng của nhạc — mặc định cả assets/music")
     bp.add_argument("target", nargs="?", help="File nhạc hoặc thư mục")
     bp.add_argument("--window", type=float, default=20.0, help="Độ dài đoạn sôi nổi cần tìm (giây)")
     bp.add_argument("--json", action="store_true")
+    bp.add_argument("--index", action="store_true", help="Ghi chỉ mục assets/music/library.json (BPM, nhịp đầu... + mood/tags bạn điền tay)")
     bp.set_defaults(func=cmd_bpm)
 
     tc = sub.add_parser("textcheck", help="Soát chữ trên màn hình bằng luật cứng (thời gian đọc, số dòng, vùng an toàn, dấu)")

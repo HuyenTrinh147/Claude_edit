@@ -156,8 +156,19 @@ class TextOverlay(_Model):
     x: float | None = Field(None, ge=0, le=1, description="Tâm ngang tuỳ chỉnh (0..1); bỏ trống = giữa")
     y: float | None = Field(None, ge=0, le=1, description="Tâm dọc tuỳ chỉnh (0..1); ghi đè position")
     rotation: float = Field(0, ge=-30, le=30, description="Nghiêng chữ kiểu sticker (độ, dương = ngược kim đồng hồ)")
+    style: str | None = Field(
+        None, description="Tên form chữ trong thư viện (`vedit styles`): điền sẵn font, cỡ, màu, viền, nền, hiệu ứng, độ "
+                          "cao. Trường nào bạn ghi rõ cạnh `style` thì thắng preset")
 
     _nfc = field_validator("text", mode="before")(nfc)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _apply_style(cls, data):
+        if isinstance(data, dict) and data.get("style"):
+            from .textstyles import apply
+            return apply(data)
+        return data
 
     @model_validator(mode="after")
     def _times(self) -> "TextOverlay":

@@ -16,7 +16,8 @@ hướng đã duyệt (`script/concepts.md`, `script/script.md`), `edit_plan.jso
 
 1. **Nhu cầu**: tâm trạng, độ dài video, có giọng đọc không (có → nhạc phải thưa và nhỏ), có cắt theo beat không (hướng
    "nhịp cắt đều" cần BPM rõ), nền tảng. Thiếu thì đặt giả định và ghi rõ.
-2. **Kho nhạc**: `vedit bpm` (cả `assets/music`) hoặc `vedit bpm "<file>" --window <độ dài đoạn>`; thêm `--json` khi cần
+2. **Kho nhạc**: đọc `assets/music/library.json` nếu có (BPM đã đo + `mood` / `tags` / `note` người dùng điền; thiếu hoặc
+   cũ thì `vedit bpm --index` để làm mới), rồi `vedit bpm` (cả `assets/music`) hoặc `vedit bpm "<file>" --window <độ dài đoạn>`; thêm `--json` khi cần
    số. Kết quả: độ dài, BPM, độ chắc, nhịp đầu, đoạn sôi nổi nhất, mean / peak dB. **BPM là ước lượng**: độ chắc < 0.3
    thì nói là đoán, bài bị gấp đôi / nửa nhịp thì ghi cả hai khả năng. Cần nghe thử thì cắt đoạn ngắn bằng ffmpeg vào
    `projects/<slug>/audio/` (không sửa file gốc của người dùng).
@@ -26,8 +27,9 @@ hướng đã duyệt (`script/concepts.md`, `script/script.md`), `edit_plan.jso
 4. **Thông số cho người dựng** cho bài thắng: `path`, `source_start` (đầu đoạn sôi nổi hoặc đầu nhịp đầu), `volume`, `duck`,
    `fade_in` / `fade_out`, `loop`, lưới beat (`nhịp đầu + k × 60/BPM` trong 15–20 điểm đầu, làm tròn 0,01 s), điểm cao
    trào nên rơi vào cảnh nào. Tiếng gốc nhỏ + có giọng đọc thì nhạc volume ~0.15–0.25 và `duck: true`.
-5. **Không có file nhạc nào dùng được** (thư mục trống, hoặc người dùng chưa nói rõ bản quyền): dùng `vedit music <slug> --duration <giây> --seed <số>`
-   (hộp nhạc pastel tạo bằng code, không bản quyền; xem `vedit music -h`) và nói thẳng đây là nhạc tạo bằng code.
+5. **Không có file nhạc nào dùng được** (thư mục trống, hoặc người dùng chưa nói rõ bản quyền): dùng `vedit music <slug> --duration <giây> --style <pastel|beat|lofi> --seed <số>`
+   (nhạc tạo bằng code, không bản quyền; `vedit music --list` cho BPM và khi nào dùng: `pastel` vui nhẹ, `beat` có trống để
+   cắt theo nhịp, `lofi` êm dưới giọng đọc) và nói thẳng đây là nhạc tạo bằng code.
 6. Ghi `projects/<slug>/audio/music.md` (bảng ứng viên, lựa chọn, thông số, lưới beat) rồi
    `vedit note <slug> "<bài chọn + BPM + vì sao>" --kind "Agent 5"`.
 

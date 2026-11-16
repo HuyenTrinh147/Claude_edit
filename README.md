@@ -250,3 +250,9 @@ Mã nguồn: `vedit/edl.py` (schema EditPlan) · `vedit/render.py` (ffmpeg + ASS
 
 - `vedit bpm [file|thư mục]` — BPM, nhịp đầu, đoạn sôi nổi, âm lượng của nhạc trong `assets/music` (Agent 5, skill `/chon-nhac`).
 - `vedit textcheck <dự án>` — soát chữ trên màn hình bằng luật cứng; chính tả và khớp lời do Agent 6 (skill `/soat-chu`).
+
+## Thư viện form chữ, âm nhạc, skill
+
+- `vedit styles` — 12 form chữ dựng sẵn (dùng bằng `"style": "nhan-so-vang"` trong `texts`); ảnh mẫu `assets/styles/gallery.jpg`.
+- `vedit music --list` — 3 kiểu nhạc tạo bằng code (pastel, beat có trống, lofi); `vedit bpm --index` lập chỉ mục nhạc của bạn.
+- Skill mới: `/edit-mau-am-thanh-danh-so` (video liệt kê âm thanh / mẹo) và `/chon-form-chu`.

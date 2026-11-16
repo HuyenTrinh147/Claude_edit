@@ -68,11 +68,12 @@ def estimate_tempo(env: np.ndarray, lo: float = 70, hi: float = 180) -> tuple[fl
     seg = ac[lag_lo:lag_hi + 1]
     if seg.max() <= 0:
         return 0.0, 0.0, 0.0
-    # sharpen: a true tempo also has energy at 2x its period
-    score = seg.copy()
+    # comb score: a true beat period p also repeats at 2p / 4p (bar) and has 8th-note energy at p/2; a syncopated
+    # 1.5-beat spacing has neither. A mild prior around 110 BPM breaks the remaining 3:2 ties.
+    score = np.zeros_like(seg)
     for k, lag in enumerate(range(lag_lo, lag_hi + 1)):
-        if 2 * lag < len(ac):
-            score[k] += 0.5 * ac[2 * lag]
+        comb = ac[lag] + 0.5 * ac[max(lag // 2, 1)] + sum(w * ac[m * lag] for m, w in ((2, 0.6), (4, 0.4)) if m * lag < len(ac))
+        score[k] = comb * np.exp(-0.5 * (np.log2(60.0 * rate / lag / 110.0) / 0.45) ** 2)
     best = int(np.argmax(score))
     lag = lag_lo + best
     # parabolic refinement of the peak position
@@ -123,3 +124,30 @@ def analyze_music(path: str | Path, window: float = 20.0) -> MusicInfo:
 
 def list_music(directory: Path) -> list[Path]:
     return sorted(p for p in Path(directory).rglob("*") if p.suffix.lower() in AUDIO_EXTS and p.is_file())
+
+
+def write_library_index(path: Path, rows: list[dict], root: Path) -> Path:
+    """Write the music library index: one entry per file with measured values plus hand-written `mood`, `tags`, `note`
+    (kept across re-runs, matched by relative path). The audio files themselves are never committed; the index is."""
+    import json
+
+    path = Path(path)
+    old = {}
+    if path.exists():
+        try:
+            old = {t["file"]: t for t in json.loads(path.read_text(encoding="utf-8")).get("tracks", [])}
+        except (ValueError, KeyError, TypeError):
+            old = {}
+    tracks = []
+    for r in rows:
+        try:
+            rel = str(Path(r["path"]).resolve().relative_to(Path(root).resolve()))
+        except ValueError:
+            rel = Path(r["path"]).name
+        prev = old.get(rel, {})
+        tracks.append({"file": rel, "duration": r["duration"], "bpm": r["bpm"], "confidence": r["confidence"],
+                       "first_beat": r["first_beat"], "best_window_start": r["best_window_start"], "mean_db": r["mean_db"],
+                       "mood": prev.get("mood", ""), "tags": prev.get("tags", []), "note": prev.get("note", "")})
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"version": 1, "tracks": tracks}, ensure_ascii=False, indent=2), encoding="utf-8")
+    return path
