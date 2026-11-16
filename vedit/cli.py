@@ -375,6 +375,60 @@ def cmd_projects(args, settings) -> None:
         print(f"{p.slug:<45} {Path(p.data['input']).name:<30} {', '.join(flags)}")
 
 
+def cmd_bpm(args, settings) -> None:
+    """Tempo / first beat / loudest window of music files (default: everything in assets/music)."""
+    import json
+
+    from .beat import analyze_music, list_music
+
+    target = Path(args.target).expanduser() if args.target else settings.music_dir
+    files = list_music(target) if target.is_dir() else [target]
+    if not files:
+        raise SystemExit(f"Không có file nhạc nào trong {target} (thả .mp3/.wav/.m4a vào đó)")
+    rows = [analyze_music(f, window=args.window).to_dict() for f in files]
+    if args.json:
+        print(json.dumps(rows, ensure_ascii=False, indent=2))
+        return
+    print(f"{'file':<40} {'dài':>7} {'BPM':>6} {'chắc':>5} {'nhịp đầu':>9} {'đoạn sôi nổi':>13} {'mean dB':>8}")
+    for r in rows:
+        print(f"{Path(r['path']).name[:40]:<40} {r['duration']:>6.1f}s {r['bpm']:>6.1f} {r['confidence']:>5.2f} "
+              f"{r['first_beat']:>8.2f}s {r['best_window_start']:>11.1f}s {r['mean_db'] if r['mean_db'] is not None else '-':>8}")
+    print("\nBPM là ước lượng (chắc < 0.3 = đoán). Dùng nhịp đầu + BPM để đặt các điểm cắt lên lưới beat.")
+
+
+def cmd_textcheck(args, settings) -> None:
+    """Hard-rule check of on-screen text in a project's / a bare edit_plan.json; writes script/textcheck.{json,md}."""
+    import json
+
+    from .textcheck import check_plan
+
+    from pydantic import ValidationError
+
+    from .agents.tools import format_validation_error
+    from .edl import EditPlan
+    from .project import Project
+
+    target = Path(args.target).expanduser()
+    if target.suffix == ".json" and target.is_file():
+        plan_path = target
+        project = Project.open(settings, target.parent) if (target.parent / "project.json").exists() else None
+    else:
+        project = Project.open(settings, args.target)
+        plan_path = project.plan_path
+    try:
+        plan = EditPlan.load(plan_path)   # text rules only: no need for the media files to exist
+    except ValidationError as e:
+        raise SystemExit(f"{plan_path} không hợp lệ:\n" + format_validation_error(e)) from None
+    report = check_plan(plan)
+    print(report.to_markdown())
+    if project is not None:
+        (project.script_dir).mkdir(parents=True, exist_ok=True)
+        (project.script_dir / "textcheck.json").write_text(json.dumps(report.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8")
+        (project.script_dir / "textcheck.md").write_text(report.to_markdown(), encoding="utf-8")
+    if report.errors:
+        raise SystemExit(1)
+
+
 def cmd_studio(args, settings) -> None:
     from .studio import serve
 
@@ -565,6 +619,16 @@ def build_parser() -> argparse.ArgumentParser:
     dy.add_argument("--source", action="store_true", help="Tải cả video gốc")
     dy.add_argument("--no-renders", action="store_true")
     d.set_defaults(func=cmd_drive)
+
+    bp = sub.add_parser("bpm", help="Đo nhịp (BPM), nhịp đầu, đoạn sôi nổi, âm lượng của nhạc — mặc định cả assets/music")
+    bp.add_argument("target", nargs="?", help="File nhạc hoặc thư mục")
+    bp.add_argument("--window", type=float, default=20.0, help="Độ dài đoạn sôi nổi cần tìm (giây)")
+    bp.add_argument("--json", action="store_true")
+    bp.set_defaults(func=cmd_bpm)
+
+    tc = sub.add_parser("textcheck", help="Soát chữ trên màn hình bằng luật cứng (thời gian đọc, số dòng, vùng an toàn, dấu)")
+    tc.add_argument("target", help="Tên dự án hoặc file edit_plan.json")
+    tc.set_defaults(func=cmd_textcheck)
 
     st = sub.add_parser("studio", help="Bảng điều khiển đội AI (web cục bộ): dự án đang ở bước nào, cổng duyệt, nút Chép")
     st.add_argument("--port", type=int, default=8765)

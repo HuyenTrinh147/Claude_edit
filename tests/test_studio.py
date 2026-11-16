@@ -110,3 +110,33 @@ def test_http_rules(settings, tmp_path):
     finally:
         server.shutdown()
         server.server_close()
+
+
+def test_text_check_blocks_before_render_and_music_only_with_files(settings, tmp_path):
+    import os
+    import time
+
+    p = make_project(settings, tmp_path)
+    p.analysis_dir.mkdir(parents=True)
+    (p.analysis_dir / "analysis.json").write_text("{}", encoding="utf-8")
+    # no music files: the music step is optional and never blocks; with files it comes right after the source step
+    assert studio.project_state(p)["current"] == "kichban"
+    assert studio.project_state(p, music_files=3)["current"] == "nhac"
+    p.note("chọn nhạc: demo 120 BPM", "Agent 5")
+    assert studio.project_state(p, music_files=3)["current"] == "kichban"
+
+    p.plan_path.write_text("{}", encoding="utf-8")
+    st = studio.project_state(p)
+    assert st["current"] == "soatchu" and "/soat-chu" in st["prompt"]        # plan written, text not checked yet
+
+    report = p.script_dir / "textcheck.json"
+    p.script_dir.mkdir(exist_ok=True)
+    report.write_text(json.dumps({"errors": 2, "warnings": 0}), encoding="utf-8")
+    st = studio.project_state(p)
+    assert st["current"] == "soatchu" and "2 lỗi" in st["headline"]
+    assert {s["key"]: s.get("badge") for s in st["steps"]}["soatchu"] == "2 lỗi"
+
+    report.write_text(json.dumps({"errors": 0, "warnings": 1}), encoding="utf-8")
+    assert studio.project_state(p)["current"] == "dung"
+    os.utime(p.plan_path, (time.time() + 10, time.time() + 10))                # plan edited after the check: stale
+    assert studio.project_state(p)["current"] == "soatchu"

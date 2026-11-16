@@ -51,7 +51,7 @@ select{flex:1;min-width:180px}
 .btn.pink{background:var(--pink);border-color:var(--pink-d)}
 .btn.ghost{background:transparent;box-shadow:none}
 .btn:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--pink-d);outline-offset:2px}
-.map{display:grid;grid-template-columns:repeat(5,1fr);gap:26px 10px;padding:14px 4px;background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:16px 16px;border-radius:16px;border:1.5px solid var(--line)}
+.map{display:grid;grid-template-columns:repeat(6,1fr);gap:26px 8px;padding:14px 4px;background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:16px 16px;border-radius:16px;border:1.5px solid var(--line)}
 .node{position:relative;text-align:center;font-size:12.5px;padding:4px}
 .node .av{margin:0 auto 4px;width:60px;height:60px;border-radius:50%;background:var(--card);border:2px solid var(--line);display:grid;place-items:center}
 .node .av svg{width:40px;height:40px;image-rendering:pixelated;shape-rendering:crispEdges}
@@ -60,7 +60,9 @@ select{flex:1;min-width:180px}
 .node.done .av{border-color:var(--mint-d);background:var(--mint)}
 .node.active .av{border-color:var(--gold-d);box-shadow:0 0 0 4px var(--gold)}
 .node.waiting .av{border-color:var(--pink-d);background:var(--pink);animation:pulse 1.6s ease-in-out infinite}
-.node.todo{opacity:.55}
+.node.todo,.node.skipped{opacity:.55}
+.node.warn .av{border-color:var(--pink-d);background:var(--gold)}
+.node.skipped .av{border-style:dashed}
 .node.optional .av{border-style:dashed}
 .node .st{position:absolute;top:0;right:12%;font-size:10.5px;padding:1px 8px;border-radius:999px;background:var(--pink-d);color:#fff}
 .node.r1::after,.node.r2::after,.node.dn::after{content:"";position:absolute;border:0 dashed var(--gold-d);opacity:.7}
@@ -136,6 +138,8 @@ const LOOKS = {
   kichban: {h:"#3b2f4a", s:"#f6d5b8", m:"#b9a3e3", a:[[7,6,"#fff"],[6,6,"#fff"]]},
   dung:    {h:"#1f2a44", s:"#f6d5b8", m:"#8fb8e8", a:[[1,1,"#6fae93"],[1,6,"#6fae93"]]},
   phanbien:{h:"#4a4a4a", s:"#f6d5b8", m:"#e8a07a", a:[[3,0,"#333"],[3,3,"#333"],[3,6,"#333"]]},
+  nhac:    {h:"#5a3a6a", s:"#f6d5b8", m:"#a8d8c8", a:[[3,0,"#e86c8d"],[3,7,"#e86c8d"],[2,0,"#4a3b52"],[2,7,"#4a3b52"]]},
+  soatchu: {h:"#3a3a4a", s:"#f6d5b8", m:"#f4e3a0", a:[[3,1,"#4a3b52"],[3,2,"#4a3b52"],[3,4,"#4a3b52"],[3,5,"#4a3b52"],[7,6,"#e86c8d"]]},
   ghiso:   {h:"#7a4a2a", s:"#f6d5b8", m:"#d8c3a0", a:[[7,5,"#fff"],[7,6,"#fff"]]},
   done:    {h:"#6b4a3a", s:"#f6d5b8", m:"#cfe8dc", a:[]},
 };
@@ -152,14 +156,16 @@ function pixel(look, heart){
 const TEAM = [
   {id:"giao",    name:"Điều phối",   steps:["giao"],            desc:"Claude chính: nói chuyện với bạn, giao việc, gom kết quả, hỏi bạn ở các cổng."},
   {id:"source",  name:"Xem source",  steps:["source"],          desc:"vedit analyze: dò cảnh, khoảng lặng, trích khung hình. Không dùng AI."},
+  {id:"nhac",    name:"Chọn nhạc",   steps:["nhac"],            desc:"Agent 5: chọn bài trong assets/music, đo BPM và nhịp đầu, đưa điểm vào, âm lượng và lưới beat."},
   {id:"noidung", name:"Nội dung",    steps:["noidung"],         desc:"Agent 4: hook, lời thoại, chữ trên màn hình, caption, hashtag. Có cổng chống văn AI."},
   {id:"kichban", name:"Viết kịch bản", steps:["kichban"],       desc:"Agent 2: đề xuất 2–3 hướng dựng, rồi viết kịch bản và EditPlan theo hướng bạn chọn."},
+  {id:"soatchu",name:"Soát chữ",    steps:["soatchu"],         desc:"Agent 6: soát chữ trên màn hình — thời gian đọc, vùng an toàn, dấu, chính tả, khớp lời."},
   {id:"dung",    name:"Dựng",        steps:["dung"],            desc:"Agent 3: render bằng ffmpeg, tự kiểm tra từng điểm cắt, sửa lỗi, xuất video."},
   {id:"phanbien",name:"Phản biện",   steps:["phanbien"],        desc:"video-critic: soi bản xuất theo hướng đã duyệt và gu của bạn. Chỉ đọc, không sửa."},
   {id:"ghiso",   name:"Ghi sổ",      steps:["ghiso"],           desc:"Ghi lời khen chê của bạn vào project.md và hồ sơ gu để lần sau làm đúng ý."},
 ];
-const NODE_LOOK = {giao:"giao",source:"source",noidung:"noidung",kichban:"kichban",dung:"dung",phanbien:"phanbien",ghiso:"ghiso"};
-const STATUS_TEXT = {waiting:"chờ bạn", active:"đang làm", optional:"tuỳ chọn"};
+const NODE_LOOK = {giao:"giao",source:"source",nhac:"nhac",soatchu:"soatchu",noidung:"noidung",kichban:"kichban",dung:"dung",phanbien:"phanbien",ghiso:"ghiso"};
+const STATUS_TEXT = {waiting:"chờ bạn", active:"đang làm", optional:"tuỳ chọn", warn:"cần sửa", skipped:"bỏ qua"};
 
 let DATA = null, SELECTED = localStorage.getItem("studio.project") || "", LAST_PROMPT = {};
 
@@ -179,6 +185,7 @@ function render(){
     h("div",{class:"stat hot"},h("b",{},String(s.waiting)),"chờ bạn duyệt"),
     h("div",{class:"stat"},h("b",{},String(s.projects)),"dự án"),
     h("div",{class:"stat"},h("b",{},String(s.finished)),"đã giao"),
+    h("div",{class:"stat"},h("b",{},String(s.music)),"file nhạc"),
     h("div",{class:"stat"},h("b",{},String(s.rules)),"gu đã ghi"),
     h("div",{class:"stat"},h("b",{},String(s.kb)),"bài trong kho"));
   document.getElementById("brandAv").replaceChildren(pixel("giao"));
@@ -199,21 +206,18 @@ function render(){
 
   const map = document.getElementById("map");
   if (!p){ map.replaceChildren(h("div",{class:"empty"},"Chưa có dự án. Đưa video vào Claude Code rồi gõ /lam-video.")); document.getElementById("detail").replaceChildren(); document.getElementById("tasks").replaceChildren(); return; }
-  const order = ["giao","source","noidung","kichban","cong1","dung","phanbien","cong2","ghiso"];
-  // snake layout like the reference: row 1 left→right, row 2 right→left
+  // snake layout like the reference: row 1 left→right, row 2 right→left; 6 columns
   const by = Object.fromEntries(p.steps.map(x=>[x.key,x]));
-  const layout = [["giao","source","noidung","kichban","cong1"],["dung","phanbien","cong2","ghiso","xong"]];
-  const nodes = [];
-  layout[0].forEach(k=>nodes.push(k));
-  layout[1].slice().reverse().forEach(k=>nodes.push(k));
+  const nodes = ["giao","source","nhac","noidung","kichban","cong1","soatchu","dung","phanbien","cong2","ghiso","xong"];
   map.replaceChildren(...nodes.map((k,i)=>{
     const st = k==="xong" ? {label:"Đã làm",who:"kho clip xong",status:p.finished?"done":"todo"} : by[k];
     const heart = st.gate; const look = k==="xong"?"done":(NODE_LOOK[k]||"giao");
-    const el = h("div",{class:"node "+st.status+(i<4?" r1":i===4?" dn":i<9?" r2":""),role:"listitem",style:`grid-row:${i<5?1:2};grid-column:${i<5?i+1:10-i}`},
+    const label = st.badge ? STATUS_TEXT[st.status] && st.status==="warn" ? st.badge : (STATUS_TEXT[st.status]||null) : (STATUS_TEXT[st.status]||null);
+    return h("div",{class:"node "+st.status+(i<5?" r1":i===5?" dn":i<11?" r2":""),role:"listitem",
+        style:`grid-row:${i<6?1:2};grid-column:${i<6?i+1:12-i}`},
       h("div",{class:"av"},pixel(look,heart)),
       h("b",{},st.label),h("small",{},st.who),
-      STATUS_TEXT[st.status]?h("span",{class:"st"},STATUS_TEXT[st.status]):null);
-    return el;
+      label?h("span",{class:"st"},label):null);
   }));
 
   const detail = document.getElementById("detail");

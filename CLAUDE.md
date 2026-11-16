@@ -5,15 +5,15 @@ viết tiếng Việt, mã nguồn & comment tiếng Anh.
 
 ## Làm việc với người dùng trong workspace này
 
-Trong Claude Code, bạn là người điều phối: 5 agent chạy dưới dạng subagent (`.claude/agents/`) nên không cần
+Trong Claude Code, bạn là người điều phối: 7 agent chạy dưới dạng subagent (`.claude/agents/`) nên không cần
 ANTHROPIC_API_KEY — `video-researcher` (Agent 1), `video-scriptwriter` (Agent 2), `video-editor` (Agent 3),
 `video-content-creator` (Agent 4 — nội dung chữ: ý tưởng, hook, lời thoại, caption, hashtag, series; chỉ có bản
-subagent, chưa có bản Claude API), `video-critic` (phản biện). Subagent không gọi được subagent khác: bạn chạy từng bước. Việc không cần AI
-(`vedit fetch / analyze / sheet / frame / track / sfx / music / validate / render / note / kb / projects / studio`) chạy bằng CLI.
+subagent, chưa có bản Claude API), `video-critic` (phản biện), `video-music-picker` (Agent 5 — chọn nhạc nền từ `assets/music`, đo BPM bằng `vedit bpm`), `video-text-checker` (Agent 6 — soát chữ trên màn hình: luật cứng bằng `vedit textcheck` + chính tả / khớp lời). Subagent không gọi được subagent khác: bạn chạy từng bước. Việc không cần AI
+(`vedit fetch / analyze / sheet / frame / track / sfx / music / validate / render / note / kb / projects / studio / bpm / textcheck`) chạy bằng CLI.
 
 - Đầu phiên, nếu `command -v vedit` không thấy lệnh: `bash scripts/setup.sh` (tạo .venv, cài, đưa `vedit` ra PATH).
 - Lệnh tắt (`.claude/skills/`): `/lam-video` (trọn quy trình), `/kich-ban` (Agent 2), `/sua-video` (Agent 3),
-  `/nghien-cuu` (Agent 1), `/noi-dung` (Agent 4). Skill công thức edit học từ video mẫu (tuỳ chọn, chỉ dùng sau khi người dùng đã chọn hướng dựng): `/edit-nhip-cat-deu`, `/edit-toc-do-cong-chu-u`, `/edit-man-hinh-roi-ket-qua`, `/edit-nhan-ban-vat-theo-nhip`, `/edit-nen-mo-phong-to`. Người dùng nói tự nhiên thì làm đúng quy trình của skill tương ứng.
+  `/nghien-cuu` (Agent 1), `/noi-dung` (Agent 4), `/chon-nhac` (Agent 5), `/soat-chu` (Agent 6). Skill công thức edit học từ video mẫu (tuỳ chọn, chỉ dùng sau khi người dùng đã chọn hướng dựng): `/edit-nhip-cat-deu`, `/edit-toc-do-cong-chu-u`, `/edit-man-hinh-roi-ket-qua`, `/edit-nhan-ban-vat-theo-nhip`, `/edit-nen-mo-phong-to`. Người dùng nói tự nhiên thì làm đúng quy trình của skill tương ứng.
 - **Không bao giờ dựng khi người dùng chưa chọn hướng dựng**: Agent 2 đề xuất 2–3 hướng khác hẳn nhau
   (`script/concepts.md`), bạn hỏi bằng AskUserQuestion, ghi lựa chọn bằng `vedit note`. Ý tưởng riêng của người dùng
   (ví dụ "làm dưới dạng game AR") luôn được phát triển thành ít nhất một hướng.
@@ -52,6 +52,7 @@ subagent, chưa có bản Claude API), `video-critic` (phản biện). Subagent 
 - `vedit/agents/` — phiên bản chạy bằng Claude API (cần key): `base.py` (tool runner streaming, web_search/web_fetch,
   caching, fallbacks), `tools.py`, `researcher.py`, `scriptwriter.py` (`run_concepts` → cổng duyệt `pipeline.choose_concept`
   → `run_scriptwriter`), `editor.py`.
+- `vedit/beat.py` — `vedit bpm`: BPM / nhịp đầu / đoạn sôi nổi / dB của nhạc (numpy + ffmpeg; BPM là ước lượng, có `confidence`). `vedit/textcheck.py` — `vedit textcheck`: luật cứng cho chữ của EditPlan (thời gian đọc, số dòng, vùng an toàn, NFC, chồng chữ); không kiểm chữ HUD; ghi `script/textcheck.{json,md}`.
 - `vedit/studio.py` + `studio_ui.html` — `vedit studio`: bảng điều khiển web cục bộ (127.0.0.1) cho đội agent; suy ra từng dự án đang ở bước nào từ file + `project.md`, hiện hai cổng duyệt (chọn hướng, duyệt bản xuất) và câu lệnh để dán vào Claude Code. Không gọi AI; chỉ ghi ghi chú vào `project.md` khi bấm cổng.
 - `vedit/fetch.py` — tải video từ Drive/YouTube/TikTok/link; `vedit/knowledge.py` — kho
   `knowledge/<category>/<slug>.md`; `vedit/gdrive.py` — Drive qua OAuth (scope drive.file).

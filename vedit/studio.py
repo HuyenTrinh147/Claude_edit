@@ -17,6 +17,7 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 from .config import Settings
+from .beat import AUDIO_EXTS
 from .project import Project
 
 UI_FILE = Path(__file__).with_name("studio_ui.html")
@@ -28,9 +29,11 @@ CHOSEN_PREFIX = "Chọn hướng"
 STEPS = (
     ("giao", "Giao việc", "Điều phối"),
     ("source", "Xem source", "vedit analyze"),
+    ("nhac", "Chọn nhạc", "Agent 5"),
     ("noidung", "Nội dung", "Agent 4"),
     ("kichban", "Kịch bản", "Agent 2"),
     ("cong1", "Cổng 1", "bạn chọn hướng"),
+    ("soatchu", "Soát chữ", "Agent 6"),
     ("dung", "Dựng", "Agent 3"),
     ("phanbien", "Phản biện", "video-critic"),
     ("cong2", "Cổng 2", "bạn duyệt bản"),
@@ -75,8 +78,31 @@ def _final_video(project: Project) -> Path | None:
     return finals[-1] if finals else None
 
 
-def project_state(project: Project) -> dict:
-    """Where the project is in the loop: step statuses, the open gate, the prompt to paste for the next step."""
+def _plan_has_music(project: Project) -> bool:
+    try:
+        plan = json.loads(project.plan_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    return any(isinstance(a, dict) and a.get("role", "music") == "music" and not str(a.get("path", "")).startswith("sfx:")
+               for a in plan.get("audio", []))
+
+
+def _textcheck(project: Project) -> dict | None:
+    """The last `vedit textcheck` report if it is newer than the plan: {"errors": n, "warnings": n}."""
+    path = project.script_dir / "textcheck.json"
+    if not path.exists() or not project.plan_path.exists() or path.stat().st_mtime < project.plan_path.stat().st_mtime:
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return {"errors": int(data.get("errors", 0)), "warnings": int(data.get("warnings", 0))}
+    except (OSError, ValueError, TypeError):
+        return None
+
+
+def project_state(project: Project, music_files: int = 0) -> dict:
+    """Where the project is in the loop: step statuses, the open gate, the prompt to paste for the next step.
+
+    `music_files` = how many tracks sit in assets/music: the music step only blocks the loop when there is something to pick."""
     notes = parse_notes(project)
     slug = project.slug
     concepts = _load_concepts(project)
@@ -89,13 +115,17 @@ def project_state(project: Project) -> dict:
                  or "critic" in n["text"].lower() or "phản biện" in n["text"].lower() for n in notes)
     approved = any(_is_user(n) and n["text"].startswith(APPROVE_PREFIX) for n in notes)
 
+    tc = _textcheck(project)
     done = {
         "giao": True,
         # a plan / concepts / render can only exist after the source was looked at (some projects have no analysis.json)
         "source": project.analysis() is not None or has_plan or bool(concepts) or final is not None,
+        "nhac": (project.dir / "audio" / "music.md").exists() or _plan_has_music(project)
+                or any("agent 5" in n["kind"].lower() or "chọn nhạc" in n["kind"].lower() for n in notes),
         "noidung": (project.dir / "content" / "post.md").exists(),
         "kichban": has_plan or bool(concepts),
         "cong1": chosen,
+        "soatchu": tc is not None and tc["errors"] == 0,
         "dung": final is not None,
         "phanbien": final is not None and critic,
         "cong2": approved,
@@ -107,7 +137,12 @@ def project_state(project: Project) -> dict:
                    "video quay gì, tiếng gốc thế nào.", "Xem source"),
         "kichban": ("/kich-ban bước 1 cho dự án {slug}: đề xuất 2–3 hướng dựng khác hẳn nhau vào script/concepts.md, "
                     "ghi giả định về nền tảng và độ dài. Chưa viết EditPlan.", "Agent 2 đề xuất hướng"),
+        "nhac": ("/chon-nhac cho dự án {slug}: Agent 5 chọn nhạc nền từ assets/music (vedit bpm), ghi audio/music.md "
+                 "gồm bài chọn, BPM, điểm vào, âm lượng và lưới beat.", "Agent 5 chọn nhạc"),
         "cong1": ("", "Bạn chọn hướng dựng"),
+        "soatchu": ("/soat-chu dự án {slug}: Agent 6 chạy vedit textcheck và đọc chính tả, đối chiếu lời; còn LỖI thì "
+                    "sửa trong EditPlan rồi soát lại (tối đa 2 vòng).",
+                    "Sửa lỗi chữ" + (f" ({tc['errors']} lỗi)" if tc and tc["errors"] else "") if tc else "Agent 6 soát chữ"),
         "dung": ("/sua-video dựng dự án {slug} từ edit_plan.json: render bản xem trước, kiểm tra mọi điểm cắt, "
                  "rồi xuất renders/final.mp4.", "Agent 3 dựng"),
         "phanbien": ("Cho video-critic soi renders/final.mp4 của dự án {slug} theo hướng đã chọn trong project.md "
@@ -119,7 +154,11 @@ def project_state(project: Project) -> dict:
                               "chọn trong project.md (đọc cả profile/gu-nguoi-dung.md). Chưa render.", "Agent 2 viết kịch bản")
         done["kichban"] = False
 
-    current = next((k for k in ("source", "kichban", "cong1", "dung", "phanbien", "cong2") if not done[k]), None)
+    # the music step blocks only before the plan exists and only when there is music to pick from;
+    # the text check blocks between the plan and the render
+    blockers = ["source"] + (["nhac"] if music_files and not has_plan else []) + ["kichban", "cong1"] \
+        + (["soatchu"] if has_plan and final is None else []) + ["dung", "phanbien", "cong2"]
+    current = next((k for k in blockers if not done[k]), None)
     # the optional content step never blocks; every other status derives from `current`
     steps = []
     for key, label, who in STEPS:
@@ -127,11 +166,18 @@ def project_state(project: Project) -> dict:
             status = "done"
         elif key == current:
             status = "waiting" if key in GATES else "active"
-        elif key == "noidung":
+        elif key == "soatchu" and tc is not None:
+            status = "warn"                     # a fresh report with errors: visible even when it does not block
+        elif key in ("noidung", "nhac"):
             status = "optional"
+        elif key == "soatchu" and final is not None:
+            status = "skipped"
         else:
             status = "todo"
-        steps.append({"key": key, "label": label, "who": who, "status": status, "gate": key in GATES})
+        step = {"key": key, "label": label, "who": who, "status": status, "gate": key in GATES}
+        if key == "soatchu" and tc is not None:
+            step["badge"] = f"{tc['errors']} lỗi" if tc["errors"] else "sạch"
+        steps.append(step)
 
     prompt, headline = ("", "Xong — đã giao")
     if current:
@@ -160,7 +206,8 @@ def project_state(project: Project) -> dict:
 
 
 def overview(settings: Settings) -> dict:
-    projects = [project_state(p) for p in Project.list_all(settings)]
+    music = sum(1 for _ in settings.music_dir.rglob("*") if _.suffix.lower() in AUDIO_EXTS) if settings.music_dir.exists() else 0
+    projects = [project_state(p, music) for p in Project.list_all(settings)]
     profile = settings.root / "profile" / "gu-nguoi-dung.md"
     rules = sum(1 for ln in profile.read_text(encoding="utf-8").splitlines() if ln.lstrip().startswith(("- ", "* "))) \
         if profile.exists() else 0
@@ -173,6 +220,7 @@ def overview(settings: Settings) -> dict:
             "finished": sum(p["finished"] for p in projects),
             "rules": rules,
             "kb": kb,
+            "music": music,
         },
     }
 

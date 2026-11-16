@@ -245,3 +245,8 @@ Mã nguồn: `vedit/edl.py` (schema EditPlan) · `vedit/render.py` (ffmpeg + ASS
 ## Bảng điều khiển đội AI
 
 `vedit studio` mở trang web cục bộ (http://127.0.0.1:8765): đội hình, bản đồ vòng lặp của từng dự án, hai cổng duyệt và nút **Chép** câu lệnh để dán vào Claude Code. Không gọi AI, không tốn tiền.
+
+## Chọn nhạc và soát chữ
+
+- `vedit bpm [file|thư mục]` — BPM, nhịp đầu, đoạn sôi nổi, âm lượng của nhạc trong `assets/music` (Agent 5, skill `/chon-nhac`).
+- `vedit textcheck <dự án>` — soát chữ trên màn hình bằng luật cứng; chính tả và khớp lời do Agent 6 (skill `/soat-chu`).

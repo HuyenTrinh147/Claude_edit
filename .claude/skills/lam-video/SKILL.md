@@ -29,6 +29,10 @@ bước). Trao đổi bằng tiếng Việt, ngắn gọn; báo tiến độ sau
    - Hướng được chọn có `new_features` (tính năng vedit chưa có) → nói rõ thiếu gì và hỏi: làm tính năng đó trước
      (bạn — người điều phối — viết code + test, rồi tiếp tục) hay chọn hướng khác.
 6. **Agent 2 — kịch bản + EditPlan**: `video-scriptwriter`, *Bước 2* với hướng đã chọn + ghi chú của người dùng.
+   Hướng có nhạc nền và `assets/music/` có file (hoặc người dùng muốn bám beat) → chạy skill `chon-nhac`
+   (Agent 5, `video-music-picker`) trước bước này để Agent 2 / 3 dùng thông số nhạc.
+6b. **Agent 6 — soát chữ**: `video-text-checker` trên EditPlan (`vedit textcheck <slug>`); còn LỖI thì sửa
+   (≤ 2 vòng) rồi mới sang bước dựng.
 7. **Agent 3 — dựng bản xem trước**: `video-editor`: dựng `<slug>`, render preview, tự kiểm tra, sửa — CHƯA xuất final.
 8. **Agent phản biện**: `video-critic` trên bản preview. Phán quyết CẦN SỬA → giao danh sách lỗi cho `video-editor`
    sửa rồi phản biện lại (tối đa 2 vòng). Chưa ĐẠT sau 2 vòng thì nói thật với người dùng điều còn vướng.
