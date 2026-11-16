@@ -5,6 +5,7 @@ _Tự động tạo bởi vedit — đừng sửa tay._
 ## techniques — Kỹ thuật dựng: nhịp cắt, chuyển cảnh, J/L-cut, zoom, màu, hiệu ứng
 
 - [Bản đồ năng lực dựng: vedit đã có và còn thiếu](techniques/ban-do-nang-luc-dung-vedit-da-co-va-con-thieu.md) — _vedit, năng lực, khoảng trống, roadmap, ưu tiên, editplan, ffmpeg, libass, đề xuất tính năng_
+- [Bốn mẫu video hướng dẫn quay màn hình CapCut (ref-mim-5 đến 8)](techniques/bon-mau-video-huong-dan-quay-man-hinh-capcut-ref-mim-5-den-8.md) — _hướng dẫn, quay màn hình, capcut, ref-mim-5, ref-mim-6, ref-mim-7, ref-mim-8, chú thích, bố cục_
 - [Bộ công cụ đồ hoạ & hiệu ứng của vedit](techniques/bo-cong-cu-do-hoa-hieu-ung-cua-vedit.md) — _vedit, đồ hoạ, motion graphics, animation, callout, sfx, look, editplan_
 - [Chiêu chữ ký của 3 video mẫu ref-mim: quay màn hình app dựng rồi ra kết quả, nhân bản vật, nền mờ](techniques/chieu-chu-ky-3-video-mau-ref-mim-quay-man-hinh-roi-ket-qua.md) — _tiktok, capcut, screen-recording, nhan-ban-vat, blur-fill, mau-3-video_
 - [Chuyển cảnh sáng tạo: whip pan, zoom, light leak, glitch](techniques/chuyen-canh-sang-tao-whip-pan-zoom-light-leak-glitch.md) — _transition, chuyển cảnh, whip pan, zoom transition, light leak, glitch, flash, easing, xfade, motion blur_

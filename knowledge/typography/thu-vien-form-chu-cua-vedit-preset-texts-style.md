@@ -15,7 +15,7 @@ Form chữ = preset dựng sẵn cho `TextOverlay`. Trong EditPlan ghi `{"text":
 Xem: `vedit styles` (danh sách) · `vedit styles <tên>` (chi tiết) · ảnh mẫu `assets/styles/gallery.jpg`
 (tạo lại: `vedit styles --gallery assets/styles/gallery.jpg`).
 
-## 12 form chữ (đều đã render được; font nằm trong `assets/fonts`)
+## 18 form chữ (đều đã render được; font nằm trong `assets/fonts`)
 
 | `style` | Font · cỡ | Nhìn | Dùng khi | Nguồn |
 |---|---|---|---|---|
@@ -30,10 +30,17 @@ Xem: `vedit styles` (danh sách) · `vedit styles <tên>` (chi tiết) · ảnh 
 | `hormozi-nhan-manh` | Montserrat · 96 | trắng viền đen 9, bật từng từ | giáo dục, động lực | kieu-chu-trend-tren-tiktok-reels |
 | `hai-bangers-vang` | Bangers · 140 | vàng viền đỏ, nghiêng −6° | hài, cảm thán | thu-vien-font-cua-vedit |
 | `khuyen-mai-anton-do` | Anton · 130 | trắng trên băng đỏ nghiêng | giá, khuyến mãi | thu-vien-font-cua-vedit |
+| `chu-thich-pill-trang` | Be Vietnam Pro · 46 | chữ đen trên pill trắng, y 0.50, fade | từng bước hướng dẫn, 1 câu / bước | ref-mim-6 |
+| `buoc-in-hoa-trang-den` | Montserrat · 64 | HOA trắng viền đen 6, y 0.78 | chú thích bước ngắn (từ khoá vàng = text thứ hai) | ref-mim-7 |
+| `tieu-gradient-lon-vang` | Anton · 160 | vàng viền xanh đậm, y 0.70 | tên hiệu ứng dưới màn hình thao tác | ref-mim-5 |
+| `chu-script-cam-nho` | Pacifico · 72 | cam viền nâu, y 0.63 | nhãn nhỏ phía trên tiêu đề lớn | ref-mim-5 |
+| `chu-thich-nghieng-viet-tay` | Playpen Sans · 50 | trắng viền đen, nghiêng −4°, y 0.80 | phụ đề lời người dẫn | ref-mim-8 |
+| `tieu-de-vang-trich-dan` | Be Vietnam Pro · 84 | vàng viền đen 8, y 0.22 | hook video hướng dẫn, tên tính năng trong ngoặc kép | ref-mim-8 |
 | `trich-dan-prata` | Prata · 78 | trắng kem, viền nâu 3, fade | trích dẫn, làm đẹp | thu-vien-font-cua-vedit |
 
 ## Cách ghép (xem skill `chon-form-chu`)
 - Mỗi video: 1 form tiêu đề + 1 form nhãn + 1 form phụ đề, tối đa 2 họ font; chọn một bộ theo thể loại, không trộn.
+- Video hướng dẫn quay màn hình: `chu-script-cam-nho` + `tieu-gradient-lon-vang` (nền xanh, hiệu ứng) · `chu-thich-pill-trang` (từng bước) · `buoc-in-hoa-trang-den` (intro / template) · `tieu-de-vang-trich-dan` + `chu-thich-nghieng-viet-tay` (có người dẫn) — xem `techniques/bon-mau-video-huong-dan-quay-man-hinh-capcut-ref-mim-5-den-8`.
 - Bộ đã chạy thật: đồ ăn pastel = `the-pill-kem` + `nhan-pill-nho`; công thức = `tieu-de-anton-pill-kem` +
   `so-buoc-anton-vang` + `nhan-pill-nho`; liệt kê âm thanh = `tieu-de-trang-vien-den` + `nhan-so-vang` +
   `khung-tim-am-thanh` + `phu-de-nho-trang`.

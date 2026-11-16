@@ -23,6 +23,9 @@ Trao đổi bằng tiếng Việt.
    | Hài, phản ứng | `hai-bangers-vang` | — | `phu-de-nho-trang` | đi kèm punch / shake |
    | Bán hàng, giá, khuyến mãi | `khuyen-mai-anton-do` | `nhan-pill-nho` | `phu-de-nho-trang` | số liệu phải có thật |
    | Cảm xúc, làm đẹp, trích dẫn | `trich-dan-prata` | — | — | nét mảnh: cần viền hoặc nền tối |
+   | Hướng dẫn quay màn hình (hiệu ứng) | `tieu-gradient-lon-vang` + `chu-script-cam-nho` | `chu-thich-pill-trang` | — | xem skill `edit-huong-dan-nen-xanh-tieu-de-lon` |
+   | Hướng dẫn quay màn hình (intro / template) | `buoc-in-hoa-trang-den` | — | — | từ khoá vàng = text thứ hai; skill `edit-huong-dan-chu-buoc-in-hoa` |
+   | Hướng dẫn có người dẫn | `tieu-de-vang-trich-dan` | — | `chu-thich-nghieng-viet-tay` | skill `edit-huong-dan-nguoi-dan-nen-mo` |
    | Game HUD | dùng `hud` (`hud_theme`), không dùng `style` | | | xem `giao-dien-game-hud-bam-vat-cho-video` |
 
 4. Luật phân cấp: mỗi video 1 form tiêu đề + 1 form nhãn + 1 form phụ đề, tối đa 2 họ font; mỗi lần cắt chỉ 1 thứ chữ

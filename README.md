@@ -253,6 +253,8 @@ Mã nguồn: `vedit/edl.py` (schema EditPlan) · `vedit/render.py` (ffmpeg + ASS
 
 ## Thư viện form chữ, âm nhạc, skill
 
-- `vedit styles` — 12 form chữ dựng sẵn (dùng bằng `"style": "nhan-so-vang"` trong `texts`); ảnh mẫu `assets/styles/gallery.jpg`.
+- `vedit styles` — 18 form chữ dựng sẵn (dùng bằng `"style": "nhan-so-vang"` trong `texts`); ảnh mẫu `assets/styles/gallery.jpg`.
 - `vedit music --list` — 3 kiểu nhạc tạo bằng code (pastel, beat có trống, lofi); `vedit bpm --index` lập chỉ mục nhạc của bạn.
 - Skill mới: `/edit-mau-am-thanh-danh-so` (video liệt kê âm thanh / mẹo) và `/chon-form-chu`.
+
+- Họ video hướng dẫn quay màn hình (4 skill `edit-huong-dan-*`): nền xanh + tiêu đề lớn, chú thích pill trắng, chữ bước in hoa, có người dẫn nền mờ. Ghi chú: `vedit kb show techniques/bon-mau-video-huong-dan-quay-man-hinh-capcut-ref-mim-5-den-8`.
