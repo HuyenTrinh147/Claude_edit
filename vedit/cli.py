@@ -375,6 +375,12 @@ def cmd_projects(args, settings) -> None:
         print(f"{p.slug:<45} {Path(p.data['input']).name:<30} {', '.join(flags)}")
 
 
+def cmd_studio(args, settings) -> None:
+    from .studio import serve
+
+    serve(settings, port=args.port, open_browser=args.open)
+
+
 def cmd_doctor(args, settings) -> None:
     def row(ok: bool, label: str, hint: str = "") -> None:
         print(f"  {'✓' if ok else '✗'} {label}" + (f" — {hint}" if hint and not ok else ""))
@@ -559,6 +565,11 @@ def build_parser() -> argparse.ArgumentParser:
     dy.add_argument("--source", action="store_true", help="Tải cả video gốc")
     dy.add_argument("--no-renders", action="store_true")
     d.set_defaults(func=cmd_drive)
+
+    st = sub.add_parser("studio", help="Bảng điều khiển đội AI (web cục bộ): dự án đang ở bước nào, cổng duyệt, nút Chép")
+    st.add_argument("--port", type=int, default=8765)
+    st.add_argument("--open", action="store_true", help="Mở trình duyệt")
+    st.set_defaults(func=cmd_studio)
 
     sub.add_parser("projects", help="Liệt kê dự án").set_defaults(func=cmd_projects)
     sub.add_parser("doctor", help="Kiểm tra môi trường").set_defaults(func=cmd_doctor)

@@ -241,3 +241,7 @@ pytest            # 30+ test: schema, ffmpeg render thật trên video tổng h�
 
 Mã nguồn: `vedit/edl.py` (schema EditPlan) · `vedit/render.py` (ffmpeg + ASS) · `vedit/media.py` (phân tích) ·
 `vedit/agents/` (3 agent + công cụ) · `vedit/knowledge.py` · `vedit/gdrive.py` · `vedit/cli.py`.
+
+## Bảng điều khiển đội AI
+
+`vedit studio` mở trang web cục bộ (http://127.0.0.1:8765): đội hình, bản đồ vòng lặp của từng dự án, hai cổng duyệt và nút **Chép** câu lệnh để dán vào Claude Code. Không gọi AI, không tốn tiền.

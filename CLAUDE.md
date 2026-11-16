@@ -9,7 +9,7 @@ Trong Claude Code, bạn là người điều phối: 5 agent chạy dưới d�
 ANTHROPIC_API_KEY — `video-researcher` (Agent 1), `video-scriptwriter` (Agent 2), `video-editor` (Agent 3),
 `video-content-creator` (Agent 4 — nội dung chữ: ý tưởng, hook, lời thoại, caption, hashtag, series; chỉ có bản
 subagent, chưa có bản Claude API), `video-critic` (phản biện). Subagent không gọi được subagent khác: bạn chạy từng bước. Việc không cần AI
-(`vedit fetch / analyze / sheet / frame / track / sfx / music / validate / render / note / kb / projects`) chạy bằng CLI.
+(`vedit fetch / analyze / sheet / frame / track / sfx / music / validate / render / note / kb / projects / studio`) chạy bằng CLI.
 
 - Đầu phiên, nếu `command -v vedit` không thấy lệnh: `bash scripts/setup.sh` (tạo .venv, cài, đưa `vedit` ra PATH).
 - Lệnh tắt (`.claude/skills/`): `/lam-video` (trọn quy trình), `/kich-ban` (Agent 2), `/sua-video` (Agent 3),
@@ -52,6 +52,7 @@ subagent, chưa có bản Claude API), `video-critic` (phản biện). Subagent 
 - `vedit/agents/` — phiên bản chạy bằng Claude API (cần key): `base.py` (tool runner streaming, web_search/web_fetch,
   caching, fallbacks), `tools.py`, `researcher.py`, `scriptwriter.py` (`run_concepts` → cổng duyệt `pipeline.choose_concept`
   → `run_scriptwriter`), `editor.py`.
+- `vedit/studio.py` + `studio_ui.html` — `vedit studio`: bảng điều khiển web cục bộ (127.0.0.1) cho đội agent; suy ra từng dự án đang ở bước nào từ file + `project.md`, hiện hai cổng duyệt (chọn hướng, duyệt bản xuất) và câu lệnh để dán vào Claude Code. Không gọi AI; chỉ ghi ghi chú vào `project.md` khi bấm cổng.
 - `vedit/fetch.py` — tải video từ Drive/YouTube/TikTok/link; `vedit/knowledge.py` — kho
   `knowledge/<category>/<slug>.md`; `vedit/gdrive.py` — Drive qua OAuth (scope drive.file).
 
