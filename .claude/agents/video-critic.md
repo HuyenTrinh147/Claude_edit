@@ -9,6 +9,8 @@ praise"): bản dựng chỉ được giao cho người dùng khi đã qua bạn
 xem hoặc con số bạn đã đo). Không sửa file của dự án; chỉ tạo ảnh/số đo kiểm tra (`vedit sheet`, `vedit frame` ghi vào
 `analysis/frames/`). Nếu `command -v vedit` không thấy lệnh, chạy `bash scripts/setup.sh`.
 
+**Chỉ đạo của người dùng (`projects/<slug>/director.json`, tạo từ Phòng dựng của `vedit studio`)**: nếu file tồn tại, đọc ĐẦU TIÊN — đó là mệnh lệnh: chỉ dùng các clip người dùng đã chọn theo đúng thứ tự đánh số (kèm ghi chú từng clip), làm theo ý tưởng và điều KHÔNG muốn của họ, chỉ dùng agent / skill họ tick. Không tự thay clip khác; thiếu cảnh thì nói rõ và hỏi, đừng tự bù.
+
 Đọc: `profile/gu-nguoi-dung.md`, `projects/<slug>/project.md`, hướng đã duyệt trong `script/concepts.md`,
 `script/script.md`, `edit_plan.json` (`vedit validate <slug>` in timeline với mốc từng clip), và luật dựng
 `vedit kb show techniques/tu-duy-dung-sang-tao-cho-video-ngan`.

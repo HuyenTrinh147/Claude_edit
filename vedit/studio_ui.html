@@ -94,6 +94,43 @@ video,.thumb{width:100%;border-radius:14px;border:1.5px solid var(--line);backgr
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 18px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.show{opacity:1}
 .empty{color:var(--mute);padding:18px;text-align:center}
+
+/* tabs + Phòng dựng */
+.tabs{display:flex;gap:8px;padding:0 20px 12px}
+.tab{font:inherit;cursor:pointer;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:8px 20px;font-weight:600;box-shadow:var(--shadow)}
+.tab[aria-selected=true]{background:var(--gold);border-color:var(--gold-d)}
+.tab:focus-visible{outline:3px solid var(--pink-d);outline-offset:2px}
+#room{grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr) minmax(280px,.9fr)}
+@media (max-width:1100px){#room{grid-template-columns:1fr}}
+[hidden]{display:none!important}
+.clips{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;max-height:74vh;overflow:auto;padding:2px}
+.clip{position:relative;background:var(--bg);border:2px solid var(--line);border-radius:14px;padding:8px;cursor:pointer}
+.clip.on{border-color:var(--pink-d);background:var(--pink)}
+.clip .strip{width:100%;aspect-ratio:480/214;border-radius:8px;background:#000 center/cover no-repeat}
+.clip b{display:block;font-size:13px;margin-top:6px;word-break:break-all}
+.clip small{color:var(--mute);display:block;font-size:11.5px}
+.clip .desc{font-size:12px;margin-top:4px;color:var(--ink);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.clip .num{position:absolute;top:2px;left:2px;min-width:30px;height:30px;border-radius:999px;background:var(--pink-d);color:#fff;font-weight:700;display:grid;place-items:center;font-size:15px}
+.clip .play{position:absolute;top:8px;right:8px;border:0;border-radius:999px;background:rgba(0,0,0,.6);color:#fff;width:30px;height:30px;cursor:pointer}
+.clip input{width:100%;margin-top:6px;font-size:12px;padding:5px 8px}
+.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.bar input[type=search]{flex:1;min-width:140px}
+.field{display:block;margin-bottom:12px}
+.field span{display:block;font-weight:600;margin-bottom:4px}
+.field textarea,.field input,.field select{width:100%;box-sizing:border-box}
+.field textarea{min-height:150px;resize:vertical}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.who{max-height:68vh;overflow:auto;margin-bottom:10px}
+.pick{display:flex;gap:8px;align-items:flex-start;background:var(--bg);border:1.5px solid var(--line);border-radius:12px;padding:8px;margin-bottom:8px}
+.pick.on{border-color:var(--mint-d);background:var(--mint)}
+.pick input{margin-top:4px;width:18px;height:18px;flex:none}
+.pick b{display:block;font-size:13.5px}
+.pick p{margin:2px 0 4px;font-size:12px;color:var(--mute);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pick .cp{font-size:11.5px;padding:2px 10px}
+.group{font:700 12px system-ui;letter-spacing:.05em;text-transform:uppercase;color:var(--mute);margin:10px 0 6px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.75);display:grid;place-items:center;z-index:20}
+.modal video{max-height:88vh;max-width:92vw;border-radius:14px;background:#000}
+.saved{color:var(--mute);font-size:12px}
 </style>
 </head>
 <body>
@@ -102,7 +139,11 @@ video,.thumb{width:100%;border-radius:14px;border:1.5px solid var(--line);backgr
   <div class="brand"><div class="avatar" id="brandAv"></div><div><h1>Vedit Studio</h1><small>Đội AI dựng video ngắn</small></div></div>
   <div class="stats" id="stats"></div>
 </header>
-<main>
+<div class="tabs" role="tablist" aria-label="Chế độ xem">
+  <button class="tab" role="tab" id="tabDeck" aria-selected="true" aria-controls="deck">Bảng điều khiển</button>
+  <button class="tab" role="tab" id="tabRoom" aria-selected="false" aria-controls="room">Phòng dựng</button>
+</div>
+<main id="deck">
   <section class="panel"><h2>Đội hình</h2><div class="team" id="team"></div></section>
   <section class="panel">
     <h2>Bản đồ vòng lặp <span>một dự án đi hết một vòng</span></h2>
@@ -116,6 +157,42 @@ video,.thumb{width:100%;border-radius:14px;border:1.5px solid var(--line);backgr
   </section>
   <section class="panel"><h2>Bảng nhiệm vụ</h2><div id="tasks"></div></section>
 </main>
+
+<main id="room" hidden>
+  <section class="panel">
+    <h2>Kho nguồn <span id="roomCount"></span></h2>
+    <div class="bar">
+      <label for="roomProj">Dự án</label><select id="roomProj"></select>
+      <input type="search" id="clipFilter" placeholder="Lọc theo tên / mô tả" aria-label="Lọc clip">
+      <button class="btn ghost" id="clearPick">Bỏ chọn</button>
+    </div>
+    <p class="saved" id="pickHint">Bấm vào clip để chọn — số trên clip là THỨ TỰ bạn chọn. Chọn xong, các agent chỉ dùng đúng những clip này.</p>
+    <div class="clips" id="clips" role="list"></div>
+  </section>
+  <section class="panel">
+    <h2>Ý tưởng của bạn</h2>
+    <label class="field"><span>Mô tả ý tưởng, cảm giác, câu chuyện</span>
+      <textarea id="idea" placeholder="Ví dụ: mở bằng 4 khung đồ ăn hiện lần lượt, nhí nhảnh, cắt theo nhạc, mình chỉ xuất hiện 3 giây…"></textarea></label>
+    <label class="field"><span>Điều KHÔNG muốn</span>
+      <textarea id="avoid" style="min-height:70px" placeholder="Ví dụ: nền chữ, quá nhiều mặt mình, nhạc êm…"></textarea></label>
+    <div class="row2">
+      <label class="field"><span>Nền tảng</span><select id="platform"><option>TikTok 9:16</option><option>Reels 9:16</option><option>YouTube Shorts 9:16</option></select></label>
+      <label class="field"><span>Độ dài</span><input id="length" placeholder="45 giây"></label>
+    </div>
+    <div class="row"><button class="btn pink" id="deliver">Giao cho đội</button><button class="btn" id="saveBtn">Lưu</button><span class="saved" id="saveState"></span></div>
+    <div id="promptBox" hidden style="margin-top:12px">
+      <p style="margin:0 0 6px;font-size:12.5px;color:var(--mute)">Chép lệnh này rồi dán vào Claude Code:</p>
+      <textarea class="promptbox" id="promptText" readonly aria-label="Lệnh giao cho đội"></textarea>
+      <div class="row"><button class="btn" id="copyPrompt">Chép</button></div>
+    </div>
+  </section>
+  <section class="panel">
+    <h2>Đội &amp; skill <span id="whoCount"></span></h2>
+    <div class="row" style="margin:0 0 8px"><button class="btn ghost" id="allWho">Dùng tất cả</button><button class="btn ghost" id="noWho">Bỏ hết</button></div>
+    <div class="who" id="whoBox"></div>
+  </section>
+</main>
+<div class="modal" id="modal" hidden><video id="modalVideo" controls playsinline></video></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
 "use strict";
@@ -277,6 +354,107 @@ let tt; function toast(m){ const t=document.getElementById("toast"); t.textConte
 
 document.getElementById("proj").addEventListener("change",e=>{ SELECTED=e.target.value; localStorage.setItem("studio.project",SELECTED); render(); });
 load(); setInterval(()=>{ if (!document.hidden && !document.activeElement.matches("textarea,input")) load(); }, 6000);
+
+// ================= Phòng dựng =================
+const AGENT_LOOK = {"video-researcher":"source","video-scriptwriter":"kichban","video-editor":"dung","video-content-creator":"noidung","video-critic":"phanbien","video-music-picker":"nhac","video-text-checker":"soatchu"};
+let ROOM = null, PICK = [], NOTES = {}, WHO = new Set(), saveTimer = null;
+
+function showTab(name){
+  const room = name === "room";
+  document.getElementById("deck").hidden = room; document.getElementById("room").hidden = !room;
+  document.getElementById("tabDeck").setAttribute("aria-selected", String(!room)); document.getElementById("tabRoom").setAttribute("aria-selected", String(room));
+  try{ localStorage.setItem("studio.tab", name); }catch(e){}
+  if (room) loadRoom(SELECTED);
+}
+document.getElementById("tabDeck").addEventListener("click",()=>showTab("deck"));
+document.getElementById("tabRoom").addEventListener("click",()=>showTab("room"));
+
+async function loadRoom(slug){
+  if (!slug) return;
+  const box = document.getElementById("clips"); box.replaceChildren(h("p",{class:"empty"},"Đang nạp kho nguồn (lần đầu tạo ảnh xem trước, có thể mất ~30 giây)…"));
+  try{ const r = await fetch("/api/room?slug="+encodeURIComponent(slug)); ROOM = await r.json(); }catch(e){ toast("Không kết nối được máy chủ"); return; }
+  if (ROOM.error){ box.replaceChildren(h("p",{class:"empty"},ROOM.error)); return; }
+  const d = ROOM.director;
+  PICK = d.clips.map(c=>c.file); NOTES = Object.fromEntries(d.clips.map(c=>[c.file,c.note||""]));
+  WHO = new Set([...(d.agents||[]), ...(d.skills||[])]);
+  document.getElementById("idea").value = d.idea||""; document.getElementById("avoid").value = d.avoid||"";
+  document.getElementById("length").value = d.length||""; document.getElementById("platform").value = d.platform||"TikTok 9:16";
+  const sel = document.getElementById("roomProj");
+  sel.replaceChildren(...DATA.projects.map(p=>h("option",{value:p.slug,selected:p.slug===ROOM.slug},p.name+" · "+p.slug.slice(0,8))));
+  renderClips(); renderWho();
+}
+document.getElementById("roomProj").addEventListener("change",e=>{ SELECTED=e.target.value; try{localStorage.setItem("studio.project",SELECTED);}catch(_){ } loadRoom(SELECTED); });
+
+function renderClips(){
+  const q = document.getElementById("clipFilter").value.trim().toLowerCase();
+  const list = ROOM.clips.filter(c=>!q || (c.file+" "+c.desc).toLowerCase().includes(q));
+  document.getElementById("roomCount").textContent = PICK.length+" đã chọn / "+ROOM.clips.length+" nguồn";
+  document.getElementById("clips").replaceChildren(...list.map(c=>{
+    const on = PICK.includes(c.file), n = PICK.indexOf(c.file)+1;
+    const el = h("div",{class:"clip"+(on?" on":""),role:"listitem",tabindex:"0","aria-pressed":String(on),onclick:()=>toggleClip(c.file),
+      onkeydown:e=>{ if(e.key===" "||e.key==="Enter"){ e.preventDefault(); toggleClip(c.file); } }},
+      on?h("span",{class:"num"},String(n)):null,
+      c.kind==="video"?h("button",{class:"play","aria-label":"Xem thử "+c.file,title:"Xem thử",onclick:e=>{ e.stopPropagation(); playClip(c); }},"▶"):null,
+      h("div",{class:"strip",style:c.thumb?`background-image:url('${c.thumb}')`:""}),
+      h("b",{},c.file),
+      h("small",{},(c.kind==="video"?c.duration+" s · "+c.width+"×"+c.height+(c.fps?" · "+c.fps+" fps":"")+(c.audio?" · có tiếng":" · không tiếng"):"ảnh "+c.width+"×"+c.height)),
+      c.desc?h("div",{class:"desc",title:c.desc},c.desc):null);
+    if (on){ const note = h("input",{type:"text",placeholder:"Ghi chú cho clip này (dùng đoạn nào, làm gì)",value:NOTES[c.file]||"","aria-label":"Ghi chú cho "+c.file,
+      onclick:e=>e.stopPropagation(),onkeydown:e=>e.stopPropagation(),oninput:e=>{ NOTES[c.file]=e.target.value; scheduleSave(); }}); el.append(note); }
+    return el;
+  }));
+}
+function toggleClip(f){ PICK = PICK.includes(f) ? PICK.filter(x=>x!==f) : [...PICK, f]; renderClips(); scheduleSave(); }
+document.getElementById("clearPick").addEventListener("click",()=>{ PICK=[]; renderClips(); scheduleSave(); });
+document.getElementById("clipFilter").addEventListener("input",()=>ROOM&&renderClips());
+function playClip(c){ const m=document.getElementById("modal"), v=document.getElementById("modalVideo"); v.src=c.url; m.hidden=false; v.play().catch(()=>{}); }
+document.getElementById("modal").addEventListener("click",e=>{ if(e.target.id==="modal"||e.target.tagName!=="VIDEO"){ const v=document.getElementById("modalVideo"); v.pause(); v.removeAttribute("src"); document.getElementById("modal").hidden=true; } });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&!document.getElementById("modal").hidden) document.getElementById("modal").click(); });
+
+function renderWho(){
+  const agents = ROOM.agents, skills = ROOM.skills;
+  document.getElementById("whoCount").textContent = WHO.size+" đã chọn";
+  const card = (name, desc, extra, look, copyText)=>h("label",{class:"pick"+(WHO.has(name)?" on":"")},
+    h("input",{type:"checkbox",checked:WHO.has(name),onchange:e=>{ e.target.checked?WHO.add(name):WHO.delete(name); renderWho(); scheduleSave(); }}),
+    look?h("div",{class:"avatar",style:"width:38px;height:38px;flex:none"},pixel(look)):null,
+    h("div",{style:"min-width:0"},h("b",{},name+(extra?" "+extra:"")),h("p",{title:desc},desc),
+      h("button",{class:"btn ghost cp",type:"button",onclick:e=>{ e.preventDefault(); copyText_(copyText); }},"Chép lệnh")));
+  const groups = [...new Set(skills.map(s=>s.group))];
+  document.getElementById("whoBox").replaceChildren(
+    h("div",{class:"group"},"Agent ("+agents.length+")"),
+    ...agents.map(a=>card(a.name,a.description,"",AGENT_LOOK[a.name],`Dùng agent ${a.name} cho dự án ${ROOM.slug}: đọc projects/${ROOM.slug}/director.json và làm đúng chỉ đạo.`)),
+    ...groups.flatMap(g=>[h("div",{class:"group"},g),...skills.filter(s=>s.group===g).map(s=>card(s.name,s.description,s.hint?"· "+s.hint:"",null,`/${s.name} dự án ${ROOM.slug} — đọc projects/${ROOM.slug}/director.json trước.`))]));
+}
+document.getElementById("allWho").addEventListener("click",()=>{ ROOM.agents.forEach(a=>WHO.add(a.name)); ROOM.skills.forEach(s=>WHO.add(s.name)); renderWho(); scheduleSave(); });
+document.getElementById("noWho").addEventListener("click",()=>{ WHO.clear(); renderWho(); scheduleSave(); });
+async function copyText_(t){ try{ await navigator.clipboard.writeText(t); toast("Đã chép — dán vào Claude Code"); }catch(e){ toast("Hãy chọn và bấm Ctrl+C"); } }
+
+function directorBody(announce){
+  return { slug: ROOM.slug, announce, idea: document.getElementById("idea").value, avoid: document.getElementById("avoid").value,
+    platform: document.getElementById("platform").value, length: document.getElementById("length").value,
+    clips: PICK.map(f=>({file:f,note:NOTES[f]||""})),
+    agents: ROOM.agents.map(a=>a.name).filter(n=>WHO.has(n)), skills: ROOM.skills.map(s=>s.name).filter(n=>WHO.has(n)) };
+}
+async function saveDirector(announce){
+  if (!ROOM) return null;
+  const st = document.getElementById("saveState");
+  try{
+    const r = await fetch("/api/director",{method:"POST",headers:{"Content-Type":"application/json","X-Studio":"1"},body:JSON.stringify(directorBody(announce))});
+    const j = await r.json(); if (!r.ok){ st.textContent = j.error||"Lỗi"; return null; }
+    st.textContent = "Đã lưu "+new Date().toLocaleTimeString("vi-VN",{hour:"2-digit",minute:"2-digit"}); return j;
+  }catch(e){ st.textContent = "Không lưu được"; return null; }
+}
+function scheduleSave(){ document.getElementById("saveState").textContent="…"; clearTimeout(saveTimer); saveTimer=setTimeout(()=>saveDirector(false),700); }
+["idea","avoid","length","platform"].forEach(id=>document.getElementById(id).addEventListener("input",scheduleSave));
+document.getElementById("saveBtn").addEventListener("click",async()=>{ clearTimeout(saveTimer); if(await saveDirector(false)) toast("Đã lưu chỉ đạo"); });
+document.getElementById("deliver").addEventListener("click",async()=>{
+  clearTimeout(saveTimer);
+  if (!PICK.length && !document.getElementById("idea").value.trim()){ toast("Hãy chọn clip hoặc mô tả ý tưởng trước"); return; }
+  const j = await saveDirector(true); if (!j) return;
+  document.getElementById("promptText").value = j.prompt; document.getElementById("promptBox").hidden = false; toast("Đã lưu chỉ đạo — chép lệnh dán vào Claude Code");
+});
+document.getElementById("copyPrompt").addEventListener("click",()=>copyText_(document.getElementById("promptText").value));
+(function(){ let t="deck"; try{ t = localStorage.getItem("studio.tab")||"deck"; }catch(e){} if (t==="room") setTimeout(()=>{ if (DATA) showTab("room"); else setTimeout(()=>showTab("room"),1200); },300); })();
 </script>
 </body>
 </html>

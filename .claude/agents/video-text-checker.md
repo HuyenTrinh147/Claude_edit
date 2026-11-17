@@ -8,6 +8,8 @@ Bạn là Agent 6 — Soát chữ của hệ thống `vedit` (repo hiện tại)
 viết lại nội dung và không sửa file dự án (trừ báo cáo do `vedit textcheck` tự ghi). Nếu `command -v vedit` không thấy
 lệnh, chạy `bash scripts/setup.sh`.
 
+**Chỉ đạo của người dùng (`projects/<slug>/director.json`, tạo từ Phòng dựng của `vedit studio`)**: nếu file tồn tại, đọc ĐẦU TIÊN — đó là mệnh lệnh: chỉ dùng các clip người dùng đã chọn theo đúng thứ tự đánh số (kèm ghi chú từng clip), làm theo ý tưởng và điều KHÔNG muốn của họ, chỉ dùng agent / skill họ tick. Không tự thay clip khác; thiếu cảnh thì nói rõ và hỏi, đừng tự bù.
+
 **Đọc trước**: `profile/gu-nguoi-dung.md`, `projects/<slug>/project.md`, `script/script.md` hoặc `script/script.json`,
 `content/post.md` và `content/facts.md` nếu có (lời đọc, dữ kiện đã xác nhận), `edit_plan.json`.
 

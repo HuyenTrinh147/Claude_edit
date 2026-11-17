@@ -14,6 +14,7 @@ subagent, chưa có bản Claude API), `video-critic` (phản biện), `video-mu
 - Đầu phiên, nếu `command -v vedit` không thấy lệnh: `bash scripts/setup.sh` (tạo .venv, cài, đưa `vedit` ra PATH).
 - Lệnh tắt (`.claude/skills/`): `/lam-video` (trọn quy trình), `/kich-ban` (Agent 2), `/sua-video` (Agent 3),
   `/nghien-cuu` (Agent 1), `/noi-dung` (Agent 4), `/chon-nhac` (Agent 5), `/soat-chu` (Agent 6). Skill công thức edit học từ video mẫu (tuỳ chọn, chỉ dùng sau khi người dùng đã chọn hướng dựng): `/edit-nhip-cat-deu`, `/edit-toc-do-cong-chu-u`, `/edit-man-hinh-roi-ket-qua`, `/edit-nhan-ban-vat-theo-nhip`, `/edit-nen-mo-phong-to`, `/edit-mau-am-thanh-danh-so` (video liệt kê âm thanh / mẹo đánh số), họ video hướng dẫn quay màn hình: `/edit-huong-dan-nen-xanh-tieu-de-lon`, `/edit-huong-dan-chu-thich-pill-trang`, `/edit-huong-dan-chu-buoc-in-hoa`, `/edit-huong-dan-nguoi-dan-nen-mo` (cần video-trong-khung / cắt vùng — chưa có trong EditPlan, xem phần giới hạn trong từng skill). `/chon-form-chu`: chọn form chữ từ thư viện (`vedit styles`). Người dùng nói tự nhiên thì làm đúng quy trình của skill tương ứng.
+- **Chỉ đạo của người dùng**: `projects/<slug>/director.json` (tạo từ tab *Phòng dựng* của `vedit studio`: clip đã chọn theo thứ tự + ghi chú, ý tưởng, điều không muốn, agent / skill được dùng) là mệnh lệnh — đọc đầu tiên, chỉ dùng đúng clip đã chọn, không tự thay. Nhờ vậy người dùng tự chọn nguồn thay vì để agent chọn sai.
 - **Không bao giờ dựng khi người dùng chưa chọn hướng dựng**: Agent 2 đề xuất 2–3 hướng khác hẳn nhau
   (`script/concepts.md`), bạn hỏi bằng AskUserQuestion, ghi lựa chọn bằng `vedit note`. Ý tưởng riêng của người dùng
   (ví dụ "làm dưới dạng game AR") luôn được phát triển thành ít nhất một hướng.
@@ -54,7 +55,7 @@ subagent, chưa có bản Claude API), `video-critic` (phản biện), `video-mu
   caching, fallbacks), `tools.py`, `researcher.py`, `scriptwriter.py` (`run_concepts` → cổng duyệt `pipeline.choose_concept`
   → `run_scriptwriter`), `editor.py`.
 - `vedit/beat.py` — `vedit bpm`: BPM / nhịp đầu / đoạn sôi nổi / dB của nhạc (numpy + ffmpeg; BPM là ước lượng, có `confidence`; `--index` ghi `assets/music/library.json`). `vedit/textcheck.py` — `vedit textcheck`: luật cứng cho chữ của EditPlan (thời gian đọc, số dòng, vùng an toàn, NFC, chồng chữ); không kiểm chữ HUD; ghi `script/textcheck.{json,md}`.
-- `vedit/studio.py` + `studio_ui.html` — `vedit studio`: bảng điều khiển web cục bộ (127.0.0.1) cho đội agent; suy ra từng dự án đang ở bước nào từ file + `project.md`, hiện hai cổng duyệt (chọn hướng, duyệt bản xuất) và câu lệnh để dán vào Claude Code. Không gọi AI; chỉ ghi ghi chú vào `project.md` khi bấm cổng.
+- `vedit/studio.py` + `studio_ui.html` — `vedit studio`: bảng điều khiển web cục bộ (127.0.0.1) cho đội agent; suy ra từng dự án đang ở bước nào từ file + `project.md`, hiện hai cổng duyệt (chọn hướng, duyệt bản xuất) và câu lệnh để dán vào Claude Code. Tab *Phòng dựng*: kho nguồn có ảnh xem trước (chọn + đánh số thứ tự), ô ý tưởng, danh sách agent / skill để tick → ghi `director.json`. Không gọi AI; chỉ ghi `project.md` (cổng, nút Giao cho đội) và `director.json`.
 - `vedit/fetch.py` — tải video từ Drive/YouTube/TikTok/link; `vedit/knowledge.py` — kho
   `knowledge/<category>/<slug>.md`; `vedit/gdrive.py` — Drive qua OAuth (scope drive.file).
 

@@ -12,6 +12,8 @@ tảng, CTA, bình luận ghim, series và lịch đăng, chuyển thể video �
 Bạn KHÔNG viết EditPlan, không chọn chuyển cảnh / hiệu ứng, không render. Nội dung cần kiểu dựng đặc biệt thì ghi
 **đề xuất cho Agent 2**, đừng tự quyết.
 
+**Chỉ đạo của người dùng (`projects/<slug>/director.json`, tạo từ Phòng dựng của `vedit studio`)**: nếu file tồn tại, đọc ĐẦU TIÊN — đó là mệnh lệnh: chỉ dùng các clip người dùng đã chọn theo đúng thứ tự đánh số (kèm ghi chú từng clip), làm theo ý tưởng và điều KHÔNG muốn của họ, chỉ dùng agent / skill họ tick. Không tự thay clip khác; thiếu cảnh thì nói rõ và hỏi, đừng tự bù.
+
 **Đọc trước mọi việc** (nếu `command -v vedit` không thấy lệnh, chạy `bash scripts/setup.sh` ở thư mục repo):
 - `profile/gu-nguoi-dung.md` (gu, điều đã khen / chê), `projects/<slug>/project.md` (nhật ký), hướng đã duyệt
   (`script/concepts.md`, `script/script.md`), transcript trong `analysis/analysis.json` khi có video.

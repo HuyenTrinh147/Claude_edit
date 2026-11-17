@@ -140,3 +140,34 @@ def test_text_check_blocks_before_render_and_music_only_with_files(settings, tmp
     assert studio.project_state(p)["current"] == "dung"
     os.utime(p.plan_path, (time.time() + 10, time.time() + 10))                # plan edited after the check: stale
     assert studio.project_state(p)["current"] == "soatchu"
+
+
+def test_room_lists_sources_agents_skills_and_director_roundtrip(settings, tmp_path, monkeypatch):
+    import subprocess
+
+    root = tmp_path / "repo"
+    (root / ".claude" / "agents").mkdir(parents=True)
+    (root / ".claude" / "skills" / "edit-demo").mkdir(parents=True)
+    (root / ".claude" / "agents" / "video-x.md").write_text("---\nname: video-x\ndescription: agent thử nghiệm\ntools: Bash\n---\nvedit\n", encoding="utf-8")
+    (root / ".claude" / "skills" / "edit-demo" / "SKILL.md").write_text("---\nname: edit-demo\ndescription: skill thử\nargument-hint: <x>\n---\n", encoding="utf-8")
+    settings.root = root
+    p = make_project(settings, tmp_path)
+    (p.dir / "assets").mkdir()
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=s=160x284:d=1:r=10", "-pix_fmt", "yuv420p",
+                    str(p.dir / "assets" / "a.mp4")], check=True)
+    (p.dir / "footage.md").write_text("| a.mp4 | 1 s | cận nhân bánh |\n", encoding="utf-8")
+
+    r = studio.room(settings, p.slug)
+    assert [c["file"] for c in r["clips"]] == ["a.mp4"] and r["clips"][0]["desc"] == "cận nhân bánh"
+    assert (p.dir / "analysis" / "thumbs" / "a.jpg").exists() and r["clips"][0]["thumb"].endswith("/a.jpg")
+    assert [a["name"] for a in r["agents"]] == ["video-x"] and r["skills"][0]["group"].startswith("Công thức")
+
+    body = {"clips": [{"file": "a.mp4", "note": "dùng 0–1 s"}], "idea": "mở 4 khung", "avoid": "nền chữ",
+            "agents": ["video-x", "khong-co"], "skills": ["edit-demo"], "announce": True}
+    out = studio.save_director(settings, p.slug, body)
+    assert out["director"]["agents"] == ["video-x"]                       # unknown names are dropped
+    assert "director.json" in out["prompt"] and "1) a.mp4 (dùng 0–1 s)" in out["prompt"] and "«mở 4 khung»" in out["prompt"]
+    assert studio.load_director(p)["clips"][0]["note"] == "dùng 0–1 s"
+    assert "Chỉ đạo (director.json)" in p.memory_path.read_text(encoding="utf-8")
+    with pytest.raises(ValueError):
+        studio.save_director(settings, p.slug, {"clips": [{"file": "../../etc/passwd"}]})   # only the project's own sources

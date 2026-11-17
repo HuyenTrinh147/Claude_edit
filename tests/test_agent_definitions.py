@@ -46,3 +46,8 @@ def test_content_creator_is_wired_into_the_workflow():
     assert (ROOT / ".claude" / "agents" / "video-content-creator.md").exists()
     assert "video-content-creator" in (ROOT / ".claude" / "skills" / "noi-dung" / "SKILL.md").read_text(encoding="utf-8")
     assert "noi-dung" in (ROOT / ".claude" / "skills" / "lam-video" / "SKILL.md").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("path", AGENTS, ids=lambda p: p.stem)
+def test_every_agent_obeys_the_directors_file(path):
+    assert "director.json" in path.read_text(encoding="utf-8"), f"{path.stem} chưa được dặn đọc director.json"

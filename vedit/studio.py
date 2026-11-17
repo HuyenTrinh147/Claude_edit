@@ -8,13 +8,15 @@ to 127.0.0.1 only.
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 import mimetypes
 import re
+import subprocess
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import unquote, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 from .config import Settings
 from .beat import AUDIO_EXTS
@@ -248,9 +250,170 @@ def add_gate_note(settings: Settings, slug: str, gate: str, text: str = "", conc
     raise ValueError("Cổng không hợp lệ")
 
 
+# ---- "Phòng dựng": the user picks sources, writes the idea, ticks agents / skills -> director.json --------------------
+
+VIDEO_EXTS = {".mp4", ".mov", ".m4v", ".webm"}
+IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
+SKILL_GROUPS = (
+    ("Quy trình (agent)", lambda n: n in ("lam-video", "kich-ban", "sua-video", "nghien-cuu", "noi-dung", "chon-nhac", "soat-chu")),
+    ("Công thức edit học từ video mẫu", lambda n: n.startswith("edit-")),
+    ("Kiểu chữ", lambda n: n == "chon-form-chu"),
+)
+DIRECTOR_FILE = "director.json"
+
+
+def _frontmatter(path: Path) -> dict[str, str]:
+    m = re.match(r"^---\n(.*?)\n---\n", path.read_text(encoding="utf-8"), re.S)
+    return {k.strip(): v.strip() for k, v in (ln.split(":", 1) for ln in m.group(1).splitlines() if ":" in ln)} if m else {}
+
+
+def list_agents(settings: Settings) -> list[dict]:
+    out = []
+    for path in sorted((settings.root / ".claude" / "agents").glob("*.md")):
+        meta = _frontmatter(path)
+        out.append({"name": meta.get("name", path.stem), "description": meta.get("description", ""),
+                    "tools": meta.get("tools", "")})
+    return out
+
+
+def list_skills(settings: Settings) -> list[dict]:
+    out = []
+    for path in sorted((settings.root / ".claude" / "skills").glob("*/SKILL.md")):
+        meta = _frontmatter(path)
+        name = meta.get("name", path.parent.name)
+        group = next((g for g, ok in SKILL_GROUPS if ok(name)), "Khác")
+        out.append({"name": name, "description": meta.get("description", ""), "hint": meta.get("argument-hint", ""),
+                    "group": group})
+    return out
+
+
+def _footage_notes(project: Project) -> dict[str, str]:
+    """stem -> what the user / agents wrote about that clip in footage.md (first table cell = name)."""
+    path = project.dir / "footage.md"
+    notes: dict[str, str] = {}
+    if path.exists():
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.startswith("|") and not line.startswith("|---"):
+                cells = [c.strip() for c in line.strip("|").split("|")]
+                if len(cells) >= 2:
+                    stem = Path(cells[0]).stem
+                    notes[stem] = max(cells[1:], key=len)
+    return notes
+
+
+def _thumb(project: Project, file: Path) -> str | None:
+    """A strip of 4 frames (clips) or a single small image: analysis/thumbs/<name>.jpg, made once."""
+    from PIL import Image
+
+    out = project.dir / "analysis" / "thumbs" / f"{file.stem}.jpg"
+    if not out.exists():
+        out.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            if file.suffix.lower() in IMAGE_EXTS:
+                im = Image.open(file).convert("RGB")
+                im.thumbnail((480, 480))
+                im.save(out, quality=82)
+            else:
+                from .media import probe
+
+                dur = max(probe(file).duration, 0.2)
+                frames = []
+                for i in range(4):
+                    tmp = out.with_name(f"{file.stem}.{i}.png")
+                    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{dur * (i + 0.5) / 4:.2f}", "-i", str(file),
+                                    "-frames:v", "1", "-vf", "scale=120:214:force_original_aspect_ratio=increase,crop=120:214",
+                                    str(tmp)], check=True, timeout=60)
+                    frames.append(Image.open(tmp).convert("RGB"))
+                    tmp.unlink()
+                strip = Image.new("RGB", (120 * 4, 214))
+                for i, f in enumerate(frames):
+                    strip.paste(f, (i * 120, 0))
+                strip.save(out, quality=80)
+        except Exception:
+            return None
+    return f"/media/{project.slug}/analysis/thumbs/{out.name}"
+
+
+def list_clips(project: Project) -> list[dict]:
+    """Every source the project can use: its assets/ folder (proxies, crops) and the original input video."""
+    from .media import MediaError, probe
+
+    files = sorted(p for p in (project.dir / "assets").glob("*") if p.suffix.lower() in VIDEO_EXTS | IMAGE_EXTS) \
+        if (project.dir / "assets").is_dir() else []
+    notes = _footage_notes(project)
+    clips = []
+    for f in files:
+        try:
+            info = probe(f)
+        except (MediaError, OSError):
+            continue
+        clips.append({"file": f.name, "kind": "image" if info.is_image else "video", "duration": round(info.duration, 2),
+                      "width": info.width, "height": info.height, "fps": round(info.fps, 1), "audio": info.has_audio,
+                      "mb": round(info.size_bytes / 1e6, 1), "desc": notes.get(f.stem, ""),
+                      "thumb": _thumb(project, f), "url": f"/media/{project.slug}/assets/{f.name}"})
+    return clips
+
+
+def load_director(project: Project) -> dict:
+    path = project.dir / DIRECTOR_FILE
+    if path.exists():
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            pass
+    return {"version": 1, "idea": "", "avoid": "", "platform": "TikTok 9:16", "length": "", "clips": [], "agents": [], "skills": []}
+
+
+def room(settings: Settings, slug: str) -> dict:
+    project = Project.open(settings, slug)
+    return {"slug": project.slug, "name": project.data.get("name", project.slug), "clips": list_clips(project),
+            "director": load_director(project), "agents": list_agents(settings), "skills": list_skills(settings)}
+
+
+def director_prompt(slug: str, d: dict) -> str:
+    clips = "; ".join(f"{i + 1}) {c['file']}" + (f" ({c['note']})" if c.get("note") else "") for i, c in enumerate(d["clips"]))
+    parts = [f"Đạo diễn (người dùng) đã chỉ đạo dự án {slug}: ĐỌC projects/{slug}/director.json trước và LÀM ĐÚNG theo đó."]
+    if clips:
+        parts.append(f"Chỉ dùng các clip người dùng đã chọn, theo thứ tự đánh số: {clips}. Không tự thay bằng clip khác.")
+    if d.get("idea"):
+        parts.append(f"Ý tưởng: «{d['idea']}»")
+    if d.get("avoid"):
+        parts.append(f"Không muốn: «{d['avoid']}»")
+    if d.get("platform") or d.get("length"):
+        parts.append(f"Nền tảng / độ dài: {d.get('platform', '')} {d.get('length', '')}".strip())
+    if d.get("agents"):
+        parts.append("Agent được dùng: " + ", ".join(d["agents"]) + ".")
+    if d.get("skills"):
+        parts.append("Skill / công thức được dùng: " + ", ".join("/" + x for x in d["skills"]) + ".")
+    parts.append("Chạy /lam-video từ bước phù hợp; hỏi tôi ở các cổng duyệt; ghi lời chê / khen của tôi vào project.md.")
+    return "\n".join(parts)
+
+
+def save_director(settings: Settings, slug: str, body: dict) -> dict:
+    project = Project.open(settings, slug)
+    valid_clips = {c.name for c in (project.dir / "assets").glob("*")} if (project.dir / "assets").is_dir() else set()
+    agents = {a["name"] for a in list_agents(settings)}
+    skills = {x["name"] for x in list_skills(settings)}
+    clips = []
+    for c in body.get("clips", [])[:200]:
+        name = str(c.get("file", ""))
+        if name not in valid_clips:
+            raise ValueError(f"Clip không thuộc dự án: {name}")
+        clips.append({"file": name, "note": " ".join(str(c.get("note", "")).split())[:300]})
+    pick = lambda key, allowed: [x for x in dict.fromkeys(str(v) for v in body.get(key, [])) if x in allowed]  # noqa: E731
+    director = {"version": 1, "updated": dt.datetime.now().isoformat(timespec="seconds"),
+                "idea": str(body.get("idea", "")).strip()[:4000], "avoid": str(body.get("avoid", "")).strip()[:2000],
+                "platform": str(body.get("platform", ""))[:80], "length": str(body.get("length", ""))[:80],
+                "clips": clips, "agents": pick("agents", agents), "skills": pick("skills", skills)}
+    (project.dir / DIRECTOR_FILE).write_text(json.dumps(director, ensure_ascii=False, indent=2), encoding="utf-8")
+    if body.get("announce"):   # the "Giao cho đội" button also leaves a line in the project log the agents read
+        project.note(f"Chỉ đạo (director.json): {len(clips)} clip đã chọn; ý tưởng: {director['idea'][:300]}", "Người dùng")
+    return {"director": director, "prompt": director_prompt(project.slug, director)}
+
+
 def _safe_media(settings: Settings, rel: str) -> Path | None:
     parts = Path(unquote(rel)).parts
-    if len(parts) < 3 or parts[1] not in ("renders", "analysis") or ".." in parts:
+    if len(parts) < 3 or parts[1] not in ("renders", "analysis", "assets") or ".." in parts:
         return None
     path = (settings.projects_dir / Path(*parts)).resolve()
     if settings.projects_dir.resolve() not in path.parents or not path.is_file():
@@ -284,6 +447,12 @@ def make_handler(settings: Settings):
                 self._send(200, UI_FILE.read_bytes(), "text/html; charset=utf-8")
             elif path == "/api/overview":
                 self._json(200, overview(settings))
+            elif path == "/api/room":
+                slug = (parse_qs(urlparse(self.path).query).get("slug") or [""])[0]
+                try:
+                    self._json(200, room(settings, slug))
+                except Exception as e:
+                    self._json(400, {"error": str(e)})
             elif path.startswith("/media/"):
                 self._media(path[len("/media/"):])
             else:
@@ -293,22 +462,24 @@ def make_handler(settings: Settings):
             file = _safe_media(settings, rel)
             if file is None:
                 return self._json(404, {"error": "not found"})
-            data = file.read_bytes()
+            size = file.stat().st_size
             ctype = mimetypes.guess_type(file.name)[0] or "application/octet-stream"
             rng = self.headers.get("Range")
             m = re.match(r"bytes=(\d*)-(\d*)", rng or "")
             if m and (m.group(1) or m.group(2)):
-                size = len(data)
                 start = int(m.group(1)) if m.group(1) else max(size - int(m.group(2)), 0)
                 end = min(int(m.group(2)), size - 1) if m.group(1) and m.group(2) else size - 1
                 if start > end:
                     return self._send(416, b"", ctype, {"Content-Range": f"bytes */{size}"})
-                return self._send(206, data[start:end + 1], ctype,
-                                  {"Content-Range": f"bytes {start}-{end}/{size}", "Accept-Ranges": "bytes"})
-            self._send(200, data, ctype, {"Accept-Ranges": "bytes"})
+                with open(file, "rb") as f:   # only the requested slice, so a 20 MB clip can be scrubbed cheaply
+                    f.seek(start)
+                    chunk = f.read(end - start + 1)
+                return self._send(206, chunk, ctype, {"Content-Range": f"bytes {start}-{end}/{size}", "Accept-Ranges": "bytes"})
+            self._send(200, file.read_bytes(), ctype, {"Accept-Ranges": "bytes"})
 
         def do_POST(self):
-            if urlparse(self.path).path != "/api/gate":
+            route = urlparse(self.path).path
+            if route not in ("/api/gate", "/api/director"):
                 return self._json(404, {"error": "not found"})
             # a page on another origin must not be able to write notes through the user's browser
             host = (self.headers.get("Host") or "").split(":")[0]
@@ -317,6 +488,13 @@ def make_handler(settings: Settings):
                 return self._json(403, {"error": "forbidden"})
             if self.headers.get("X-Studio") != "1":
                 return self._json(403, {"error": "forbidden"})
+            if route == "/api/director":
+                try:
+                    length = min(int(self.headers.get("Content-Length") or 0), 200000)
+                    body = json.loads(self.rfile.read(length) or b"{}")
+                    return self._json(200, {"ok": True, **save_director(settings, str(body.get("slug", "")), body)})
+                except Exception as e:
+                    return self._json(400, {"error": str(e)})
             try:
                 length = min(int(self.headers.get("Content-Length") or 0), 20000)
                 body = json.loads(self.rfile.read(length) or b"{}")

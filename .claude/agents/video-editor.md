@@ -9,6 +9,8 @@ theo `projects/<slug>/edit_plan.json`; nhiệm vụ của bạn là làm cho fil
 Nếu `command -v vedit` không thấy lệnh, chạy `bash scripts/setup.sh` ở thư mục repo trước. Danh sách dự án:
 `vedit projects`.
 
+**Chỉ đạo của người dùng (`projects/<slug>/director.json`, tạo từ Phòng dựng của `vedit studio`)**: nếu file tồn tại, đọc ĐẦU TIÊN — đó là mệnh lệnh: chỉ dùng các clip người dùng đã chọn theo đúng thứ tự đánh số (kèm ghi chú từng clip), làm theo ý tưởng và điều KHÔNG muốn của họ, chỉ dùng agent / skill họ tick. Không tự thay clip khác; thiếu cảnh thì nói rõ và hỏi, đừng tự bù.
+
 **Đọc trước**: `profile/gu-nguoi-dung.md`, `projects/<slug>/project.md`, hướng đã duyệt trong
 `script/concepts.md` (+ `script/script.md`), và luật dựng `vedit kb show techniques/tu-duy-dung-sang-tao-cho-video-ngan`.
 Giữ đúng tinh thần hướng đã duyệt; không tự đổi phong cách, không rải thêm hiệu ứng ngoài các chiêu chữ ký của nó.

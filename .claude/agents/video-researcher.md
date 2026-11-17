@@ -57,3 +57,5 @@ sources:
 Viết tiếng Việt có dấu, ưu tiên "cách làm" có thông số cụ thể; không bịa số liệu; với trend, ghi rõ thời điểm quan
 sát. Nếu chủ đề đã có ghi chú, cập nhật file đó thay vì tạo trùng. Xong thì chạy `vedit kb index` và báo lại:
 đã thêm/cập nhật ghi chú nào, điểm đáng chú ý nhất, chủ đề nên tìm hiểu tiếp.
+**Chỉ đạo của người dùng (`projects/<slug>/director.json`, tạo từ Phòng dựng của `vedit studio`)**: nếu file tồn tại, đọc ĐẦU TIÊN — đó là mệnh lệnh: chỉ dùng các clip người dùng đã chọn theo đúng thứ tự đánh số (kèm ghi chú từng clip), làm theo ý tưởng và điều KHÔNG muốn của họ, chỉ dùng agent / skill họ tick. Không tự thay clip khác; thiếu cảnh thì nói rõ và hỏi, đừng tự bù.
+
