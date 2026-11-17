@@ -140,3 +140,20 @@ def test_explicit_fields_win_over_the_style_and_unknown_style_is_rejected():
     assert (t.size, t.color, t.font) == (60, "#FF0000", "Baloo 2")
     with pytest.raises(ValidationError):
         plan([{"text": "x", "start": 0, "end": 3, "style": "khong-co"}])
+
+
+def test_vlog_styles_have_no_background_plate_and_shadow_reaches_the_ass_style():
+    from pathlib import Path
+
+    from vedit.ass import build_ass
+    from vedit.textstyles import STYLES
+
+    vlog = [s for s in STYLES.values() if s.name.startswith("vlog-")]
+    assert len(vlog) >= 8
+    for s in vlog:   # the user finds text plates "quê": the vlog set must rely on outline + shadow only
+        assert s.fields.get("shape", "none") == "none" and not s.fields.get("box") and s.fields["outline"] >= 4
+    p = plan([{"text": "BÁNH MÌ QUE", "start": 0, "end": 3, "style": "vlog-tu-khoa-bong-bay"}])
+    ass = build_ass(p, "Inter", Path("assets/fonts"), fps=30)
+    style = next(line for line in ass.splitlines() if line.startswith("Style: T0,"))
+    assert "Cherry Bomb One" in style and "&H001E34E0" in style        # opaque shadow colour #E0341E as BGR
+    assert style.split(",")[17] == "9"                                   # shadow depth

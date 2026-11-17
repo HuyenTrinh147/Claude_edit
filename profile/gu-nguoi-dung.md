@@ -23,7 +23,20 @@ khen/chê (ghi nguyên văn + bài học rút ra). File được commit để nh
     tiếng thật: mọi sự kiện HUD đều có tiếng + nhạc nền nhẹ (duck dưới tiếng bếp); (2) đồ hoạ/minh hoạ dùng **pastel tươi
     tắn** (thẻ kem, kẹo hồng / mint / lavender / vàng bơ / xanh trời, chữ tím than), không dùng neon cyan sci-fi.
 
+- 2026-11-17 · Dự án `20261116-banh-mi-que-phuc-an` bản 1 (vlog êm, nhạc lofi, chữ pill kem, nhiều cảnh mặt người dùng ăn) —
+  chê: *"tôi không ưng cách bạn edit video, tôi khong thấy thực sụ thu hút, quá nhiều mặt tôi, còn những vid quay quá trình,
+  quay cận cảnh bánh, các kiểu thì không được nhắc tới, chuyển cảnh thì đơn giản không quá đặc sắc, font chữ quá basic, và
+  có nền chữ, kiểu đó rất quê"*; yêu cầu: mở đầu cận cảnh nhân bánh + hiệu ứng sinh động ngon mắt, font khác + màu cách
+  điệu, chuyển cảnh dùng các skill đã học, tham khảo vlog, 45 s, nội dung **nhí nhảnh năng động**, bám brief nhưng nhận xét
+  **dưới góc nhìn người trải nghiệm**.
+  - Bài học: (1) video review đồ ăn: **món ăn và quá trình là nhân vật chính**, mặt người dùng chỉ thoáng qua (≤ ~10 %);
+    (2) **không dùng nền chữ** (pill / box / banner) — dùng chữ viền + bóng màu, font vlog (bộ `vlog-*`); (3) chọn "an toàn /
+    êm" = bị chê nhạt: người dùng muốn năng động, chuyển cảnh và hiệu ứng rõ; (4) lời chữ phải có giọng người trải nghiệm,
+    không chỉ liệt kê dữ kiện; (5) cắt cận từ nguồn 4K để có cảnh macro.
+
 ## Điều đã biết người dùng thích / không thích
+- Không thích (2026-11-17): **nền chữ** (pill / hộp) — "rất quê"; font cơ bản; quá nhiều cảnh mặt mình; chuyển cảnh đơn giản; video êm, ít hiệu ứng.
+- Thích (2026-11-17): cận cảnh đồ ăn / quá trình làm; mở đầu bằng cận nhân bánh; font vlog cách điệu nhiều màu; nội dung nhí nhảnh, năng động; lời bình góc nhìn người trải nghiệm.
 - Không thích: video "đồng phục", hiệu ứng rải đều không có ý tưởng.
 - Thích (2026-10-31, dự án cà pháo): video **như đang chơi game nấu ăn thực tế ảo** — giao diện game kết hợp HUD công
   nghệ (viền mảnh neon, khung ngắm) với chữ thưởng vui; chữ pha thuật ngữ game tiếng Anh (PERFECT!, LEVEL UP, COMBO ×3).

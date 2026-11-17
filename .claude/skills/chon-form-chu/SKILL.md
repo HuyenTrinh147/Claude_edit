@@ -12,10 +12,12 @@ Trao đổi bằng tiếng Việt.
 2. Xem thư viện: `vedit styles` (danh sách), `vedit styles <tên>` (chi tiết + ví dụ JSON), ảnh mẫu
    `assets/styles/gallery.jpg` (gửi người dùng bằng SendUserFile khi họ cần nhìn để chọn). Cần ảnh mới sau khi sửa
    preset: `vedit styles --gallery assets/styles/gallery.jpg`.
-3. Ghép theo thể loại (chọn **một bộ**, không trộn nhiều bộ):
+3. **Gu người dùng (2026-11-17): không dùng nền chữ (pill / box / banner) cho vlog / review — ưu tiên bộ `vlog-*`
+   (chữ viền + bóng màu, font vlog).** Ghép theo thể loại (chọn **một bộ**, không trộn nhiều bộ):
 
    | Thể loại / tâm trạng | Tiêu đề | Nhãn / số | Phụ đề | Ghi chú |
    |---|---|---|---|---|
+   | Vlog / review đồ ăn (mặc định) | `vlog-chu-ky` + `vlog-tu-khoa-bong-bay` hoặc `vlog-tieu-de-swash` | `vlog-nhan-viet-tay`, `vlog-so-dam`, `vlog-tuong-thanh` | `vlog-ghi-chu` | không nền; mỗi cảnh ≤ 2 khối chữ |
    | Đồ ăn, mèo, pastel, kể chuyện mềm | `the-pill-kem` | `nhan-pill-nho` | `phu-de-nho-trang` | nền kem giữ chữ đọc được trên mọi cảnh |
    | Công thức / hướng dẫn đếm bước | `tieu-de-anton-pill-kem` | `so-buoc-anton-vang` + `nhan-pill-nho` | `phu-de-nho-trang` | số bước lớn, tên bước nhỏ vào trễ 0.3 s |
    | Liệt kê âm thanh / mẹo / công cụ | `tieu-de-trang-vien-den` | `nhan-so-vang` | `phu-de-nho-trang` | thêm `khung-tim-am-thanh` (xem skill `edit-mau-am-thanh-danh-so`) |

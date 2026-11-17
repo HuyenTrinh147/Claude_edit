@@ -141,6 +141,10 @@ class TextOverlay(_Model):
     color: str = Field("#FFFFFF", pattern=HEX_COLOR)
     outline_color: str = Field("#000000", pattern=HEX_COLOR)
     outline: float = Field(5, ge=0, le=20)
+    shadow: float = Field(2, ge=0, le=24, description="Độ lệch bóng đổ cứng (px) về phía phải-dưới; 6–10 + shadow_color "
+                                                      "đậm = chữ nổi khối kiểu sticker / retro mà không cần nền")
+    shadow_color: str = Field("#000000", pattern=HEX_COLOR)
+    shadow_opacity: float = Field(0.55, ge=0, le=1)
     box: bool = Field(False, description="Nền hộp phía sau chữ")
     box_color: str = Field("#000000", pattern=HEX_COLOR)
     box_opacity: float = Field(0.6, ge=0, le=1)

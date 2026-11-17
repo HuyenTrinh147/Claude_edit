@@ -15,7 +15,7 @@ Form chữ = preset dựng sẵn cho `TextOverlay`. Trong EditPlan ghi `{"text":
 Xem: `vedit styles` (danh sách) · `vedit styles <tên>` (chi tiết) · ảnh mẫu `assets/styles/gallery.jpg`
 (tạo lại: `vedit styles --gallery assets/styles/gallery.jpg`).
 
-## 18 form chữ (đều đã render được; font nằm trong `assets/fonts`)
+## 26 form chữ (đều đã render được; font nằm trong `assets/fonts`)
 
 | `style` | Font · cỡ | Nhìn | Dùng khi | Nguồn |
 |---|---|---|---|---|
@@ -51,3 +51,22 @@ Xem: `vedit styles` (danh sách) · `vedit styles <tên>` (chi tiết) · ảnh 
 ## Giới hạn
 Preset chỉ giữ giao diện của một dòng chữ. Sao lấp lánh, biểu tượng dấu trang, nút "+" xanh của khung tìm âm thanh phải
 thêm bằng `graphics` / `images`. Màu viền trắng-trên-nâu của ảnh mẫu khó thấy: thử trên cảnh thật trước khi chốt.
+
+## Bộ `vlog-*` (2026-11-17): chữ KHÔNG nền, font vlog, viền + bóng màu
+Người dùng chê nền chữ (pill / hộp) là "quê" và font cơ bản → video vlog / review đồ ăn dùng bộ này thay cho các form pill.
+Trường mới của `texts[]`: `shadow` (px), `shadow_color`, `shadow_opacity` — bóng cứng lệch phải-dưới tạo chữ nổi khối.
+
+| `style` | Font (OFL, có dấu tiếng Việt) | Dùng khi |
+|---|---|---|
+| `vlog-tieu-de-swash` | Sansita Swashed ExtraBold | tiêu đề mở đầu, kem + bóng cam |
+| `vlog-tu-khoa-bong-bay` | Cherry Bomb One | từ khoá / tên món lớn, vàng + bóng đỏ |
+| `vlog-nhan-viet-tay` | Fuzzy Bubbles Bold | nhãn món, lời bình ngắn |
+| `vlog-tuong-thanh` | Gluten Bold | tượng thanh "xèo xèo~" |
+| `vlog-co-net` | Water Brush | cảm thán đè chéo |
+| `vlog-so-dam` | Dela Gothic One | số, giá, giờ |
+| `vlog-ghi-chu` | Itim | địa chỉ, ghi chú nhỏ |
+| `vlog-chu-ky` | Dancing Script Bold | từ nối mềm trên tiêu đề |
+
+Font mới khác trong `assets/fonts`: Borel, Grandstander ExtraBold, Moo Lah Lah, Sriracha (chưa gắn style). Font biến thiên
+(Sansita Swashed, Grandstander, Dancing Script, Gluten) đã được cắt thành bản tĩnh bằng fontTools instancer vì libass chọn
+sai độ đậm của font biến thiên. Coiny, Lilita One, Madimi One KHÔNG có tiếng Việt (đã thử, không dùng).

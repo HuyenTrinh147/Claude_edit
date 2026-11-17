@@ -343,15 +343,15 @@ def text_events(texts: list[TextOverlay], W: int, H: int, default_font: str, fon
                 rf"\an5{place}{rot_tag}\bord0\shad3\4c&H000000&\4a&HB4&{fill}{shape_tags}",
                 round_rect_path(sw, sh, radius))))
 
-        outline, shadow = (0, 0) if has_shape else (t.outline, 2)
+        outline, shadow = (0, 0) if has_shape else (t.outline, t.shadow)
         border_style, outline_color = 1, ass_color(t.outline_color)
         if t.box and not has_shape:  # libass BorderStyle 3: an opaque box per line, coloured by OutlineColour
             border_style, outline_color = 3, ass_color(t.box_color, t.box_opacity)
             outline, shadow = max(fs * 0.22, 6), 0
         styles.append(style_line(
             f"T{i}", font=fonts.name(family, t.bold), size=fs, primary=ass_color(t.color), secondary=ass_color(t.color),
-            outline_color=outline_color, back=ass_color("#000000", 0.55), bold=t.bold, border_style=border_style,
-            outline=outline, shadow=shadow, align=5, margin_lr=int(W * 0.05), margin_v=0))
+            outline_color=outline_color, back=ass_color(t.shadow_color, t.shadow_opacity), bold=t.bold,
+            border_style=border_style, outline=outline, shadow=shadow, align=5, margin_lr=int(W * 0.05), margin_v=0))
         body = _staggered(raw, t.animation) if t.animation in ("typewriter", "word_pop") else ass_text(raw)
         events.append(_ev(6, t.start, t.end, f"T{i}", rf"{{\an5{place}{rot_tag}{tags}}}{body}"))
     return styles, events
