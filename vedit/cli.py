@@ -385,6 +385,50 @@ def cmd_projects(args, settings) -> None:
         print(f"{p.slug:<45} {Path(p.data['input']).name:<30} {', '.join(flags)}")
 
 
+def cmd_timeline(args, settings) -> None:
+    """Export a project's EditPlan as timeline data (what the Studio page draws)."""
+    import json
+
+    from .edl import EditPlan
+    from .planpatch import timeline
+    from .project import Project
+
+    project = Project.open(settings, args.project)
+    data = timeline(EditPlan.load(project.plan_path))
+    text = json.dumps(data, ensure_ascii=False)
+    if args.out:
+        Path(args.out).write_text(text, encoding="utf-8")
+        print(f"✓ {args.out} ({data['duration']} s, {len(data['clips'])} clip, {len(data['texts'])} chữ, {len(data['audio'])} âm thanh)")
+    else:
+        print(text)
+
+
+def cmd_patch(args, settings) -> None:
+    """Apply timeline edits (from the Studio page) to edit_plan.json, validating every edit; backs up the old plan."""
+    import json
+    import shutil
+
+    from .planpatch import apply_edits
+    from .project import Project
+
+    project = Project.open(settings, args.project)
+    edits = json.loads(Path(args.edits).read_text(encoding="utf-8"))
+    edits = edits.get("items", edits) if isinstance(edits, dict) else edits
+    plan = json.loads(project.plan_path.read_text(encoding="utf-8"))
+    new_plan, applied, rejected = apply_edits(plan, edits)
+    for e in applied:
+        print(f"✓ {e.get('path')} = {json.dumps(e.get('value'), ensure_ascii=False) if e.get('op', 'set') == 'set' else '(xoá)'}  {e.get('label', '')}")
+    for e in rejected:
+        print(f"✗ {e.get('path')}: {e['reason']}")
+    if args.dry_run or not applied:
+        print("\n(chưa ghi file)" if args.dry_run else "\nKhông có chỉnh sửa nào áp dụng được.")
+        return
+    shutil.copyfile(project.plan_path, project.plan_path.with_name("edit_plan.prev.json"))
+    project.plan_path.write_text(json.dumps(new_plan, ensure_ascii=False, indent=1), encoding="utf-8")
+    project.note(f"Áp dụng {len(applied)} chỉnh sửa từ timeline của người dùng" + (f" ({len(rejected)} bị từ chối)" if rejected else ""), "Người dùng")
+    print(f"\n✓ Đã ghi {project.plan_path} (bản cũ: edit_plan.prev.json). Render lại: vedit render {project.slug} --preview")
+
+
 def cmd_fonts(args, settings) -> None:
     """Font tooling: list / check Vietnamese coverage / install from folder, zip or URL / specimen sheet."""
     from . import fontlib
@@ -701,6 +745,17 @@ def build_parser() -> argparse.ArgumentParser:
     dy.add_argument("--source", action="store_true", help="Tải cả video gốc")
     dy.add_argument("--no-renders", action="store_true")
     d.set_defaults(func=cmd_drive)
+
+    tl = sub.add_parser("timeline", help="Xuất EditPlan thành dữ liệu timeline (clip, chữ, âm thanh theo giây) cho trang Studio")
+    tl.add_argument("project")
+    tl.add_argument("--out", help="Ghi ra file JSON")
+    tl.set_defaults(func=cmd_timeline)
+
+    pa = sub.add_parser("patch", help="Áp dụng chỉnh sửa timeline của người dùng (JSON) vào edit_plan.json, kiểm hợp lệ từng chỉnh sửa")
+    pa.add_argument("project")
+    pa.add_argument("edits", help="File JSON: danh sách {path, value, op}")
+    pa.add_argument("--dry-run", action="store_true")
+    pa.set_defaults(func=cmd_patch)
 
     fo = sub.add_parser("fonts", help="Công cụ font: list, check (đủ tiếng Việt?), add (thư mục / zip / URL), specimen (so sánh theo màu video)")
     fo.add_argument("action", choices=["list", "check", "add", "specimen"])
