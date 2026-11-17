@@ -385,6 +385,44 @@ def cmd_projects(args, settings) -> None:
         print(f"{p.slug:<45} {Path(p.data['input']).name:<30} {', '.join(flags)}")
 
 
+def cmd_fonts(args, settings) -> None:
+    """Font tooling: list / check Vietnamese coverage / install from folder, zip or URL / specimen sheet."""
+    from . import fontlib
+
+    if args.action == "list":
+        print(f"{'họ font':<26} {'kiểu':<12} {'tiếng Việt':<11} giấy phép")
+        for r in fontlib.list_fonts(settings.fonts_dir):
+            print(f"{r.family[:25]:<26} {r.style[:11]:<12} {('đủ' if r.vietnamese_ok else f'thiếu {len(r.missing)}'):<11} {r.license[:50]}")
+        return
+    if args.action == "check":
+        paths = [Path(a) for a in args.args]
+        for a in args.args:   # a family name from assets/fonts is accepted too
+            if not Path(a).exists():
+                paths = [Path(r.path) for r in fontlib.list_fonts(settings.fonts_dir) if r.family.lower() == a.lower()] or paths
+        for p in paths:
+            r = fontlib.check(p)
+            print(f"{r.family} {r.style}  ({p.name}){' — font biến thiên' if r.variable else ''}")
+            print(f"  tiếng Việt: {'ĐỦ' if r.vietnamese_ok else 'THIẾU ' + str(len(r.missing)) + ' ký tự: ' + ''.join(r.missing[:30])} ({r.coverage:.0%})")
+            print(f"  giấy phép: {r.license or '(không ghi trong font — xem file OFL / LICENSE đi kèm)'}")
+        return
+    if args.action == "add":
+        if not args.args:
+            raise SystemExit("Cần nguồn: thư mục, .zip, .ttf/.otf hoặc URL")
+        try:
+            out = fontlib.add(args.args[0], settings.fonts_dir, require_vietnamese=not args.allow_missing)
+        except (ValueError, OSError) as e:
+            raise SystemExit(f"✗ {e}") from None
+        for rep, path, why in out:
+            print(f"{'✓' if path else '✗'} {rep.family} {rep.style}: {why}" + (f" → {path}" if path else ""))
+        print("\nGhi lại tên họ font vào EditPlan (texts[].font); giấy phép: kiểm file LICENSE-*.txt vừa chép.")
+        return
+    if args.action == "specimen":
+        if not args.args:
+            raise SystemExit("Cần ít nhất một tên họ font")
+        out = fontlib.specimen(args.args, settings.fonts_dir, Path(args.out), text=args.text or fontlib.PANGRAM, bg=args.bg, color=args.color)
+        print(f"✓ {out}")
+
+
 def cmd_styles(args, settings) -> None:
     """Text-form library: list, show one (as a JSON snippet for an EditPlan), or render the gallery image."""
     import json
@@ -663,6 +701,16 @@ def build_parser() -> argparse.ArgumentParser:
     dy.add_argument("--source", action="store_true", help="Tải cả video gốc")
     dy.add_argument("--no-renders", action="store_true")
     d.set_defaults(func=cmd_drive)
+
+    fo = sub.add_parser("fonts", help="Công cụ font: list, check (đủ tiếng Việt?), add (thư mục / zip / URL), specimen (so sánh theo màu video)")
+    fo.add_argument("action", choices=["list", "check", "add", "specimen"])
+    fo.add_argument("args", nargs="*", help="check: file hoặc họ font · add: nguồn · specimen: các họ font")
+    fo.add_argument("--allow-missing", action="store_true", help="add: vẫn cài font thiếu ký tự tiếng Việt")
+    fo.add_argument("--text", help="specimen: câu mẫu")
+    fo.add_argument("--bg", default="#FFF4D6", help="specimen: màu nền")
+    fo.add_argument("--color", default="#3B2A6B", help="specimen: màu chữ")
+    fo.add_argument("--out", default="specimen.jpg", help="specimen: file ảnh xuất ra")
+    fo.set_defaults(func=cmd_fonts)
 
     sy = sub.add_parser("styles", help="Thư viện form chữ (preset cho texts[].style): liệt kê, xem chi tiết, ảnh mẫu")
     sy.add_argument("name", nargs="?", help="Tên style để xem chi tiết")

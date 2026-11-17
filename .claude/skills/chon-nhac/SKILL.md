@@ -1,6 +1,6 @@
 ---
 name: chon-nhac
-description: Agent 5 — Chọn nhạc: chọn nhạc nền cho video từ thư mục assets/music (đo BPM, nhịp đầu, đoạn sôi nổi), đề xuất điểm vào, âm lượng, duck và lưới beat; chưa có nhạc thì tạo nhạc bằng code. Dùng khi người dùng muốn chọn nhạc, bám beat hoặc thả nhạc mới vào kho.
+description: Agent 5 — Âm thanh: rà nhạc hợp vibe / trend cho video, PHÂN LOẠI RỦI RO BẢN QUYỀN từng bài kèm bằng chứng (giấy phép, quy định nền tảng), đo BPM / nhịp đầu từ assets/music, đề xuất điểm vào, âm lượng, lưới beat; chưa có nhạc thì tạo nhạc bằng code. Dùng khi người dùng muốn chọn nhạc, tìm nhạc trend, kiểm nhạc có dính bản quyền không, hoặc bám beat.
 argument-hint: [slug dự án] [tâm trạng, độ dài, bám beat hay không...]
 ---
 
@@ -18,3 +18,4 @@ Trao đổi bằng tiếng Việt.
    Nếu có nhạc tạo bằng code, đính kèm file nghe thử.
 6. Người dùng chấp nhận → Agent 3 (`video-editor`) đưa thông số vào `audio` của EditPlan; khen / chê nhạc thì ghi nguyên
    văn `vedit note <slug> "..." --kind "phản hồi"` và cập nhật `profile/gu-nguoi-dung.md` (commit + push).
+7. Khi người dùng muốn **tìm nhạc mới / nhạc trend / kiểm bản quyền**: nói rõ agent chỉ phân loại rủi ro theo giấy phép đã đọc (không cam kết "không dính bản quyền"); gửi `projects/<slug>/audio/candidates.json` (và bảng trong `music.md`) kèm tóm tắt: bài dùng được ngay, bài cần tự xác nhận, bài không nên dùng cho video hợp tác. Cập nhật `music/<slug>` trên trang Studio nếu họ đang dùng.
