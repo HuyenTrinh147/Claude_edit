@@ -67,6 +67,7 @@ _Tự động tạo bởi vedit — đừng sửa tay._
 
 ## platforms — Đặc thù nền tảng: kích thước, độ dài, vùng an toàn, thuật toán phân phối
 
+- [Chính sách nội dung TikTok, Shopee, Facebook và quy định quảng cáo Việt Nam — danh sách soát video](platforms/chinh-sach-noi-dung-tiktok-shopee-facebook-va-quang-cao-viet-nam.md) — _chính sách, tiktok, shopee, facebook, meta, quảng cáo, kọc, freecast, bản quyền, nhạc, ghi rõ hợp tác, phản biện_
 - [Kích thước và vùng an toàn cho video dọc](platforms/kich-thuoc-va-vung-an-toan-cho-video-doc.md) — _9:16, safe zone, tiktok, reels, shorts, kích thước_
 
 ## audio — Âm thanh: nhạc nền, giọng đọc, SFX, loudness

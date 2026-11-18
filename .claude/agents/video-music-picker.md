@@ -53,7 +53,7 @@ báo vi phạm; bạn chỉ phân loại rủi ro dựa trên giấy phép và q
    hoặc chỉ rõ cho tài khoản cá nhân), `cao` (nhạc thương mại, không có giấy phép), `chưa rõ` (không đọc được điều khoản). Không bao giờ ghi
    "không dính bản quyền" như một sự thật; viết "rủi ro thấp theo giấy phép tại <URL>".
 5. **Ghi `projects/<slug>/audio/candidates.json`** (mảng đối tượng: `title, artist, url, source, license, commercial_use` (yes/no/unknown),
-   `attribution, copyright_risk, evidence, vibe, bpm` (số từ `vedit bpm` nếu có file, ngược lại null), `trend_evidence, note`) và bảng tương ứng
+   `attribution, copyright_risk, evidence, vibe, bpm` (số từ `vedit bpm` nếu có file, ngược lại null), `trend_evidence, tiktok_search, note`) và bảng tương ứng
    trong `audio/music.md`. Tối đa 8 ứng viên, xếp từ phù hợp nhất. Tải file thử nghe (nếu giấy phép cho phép) vào `assets/music/` rồi `vedit bpm`.
 6. Cuối cùng nói rõ: bài nào dùng được ngay, bài nào cần người dùng tự xác nhận giấy phép / quy định tài khoản, bài nào KHÔNG nên dùng cho video hợp tác.
 
@@ -66,3 +66,14 @@ báo vi phạm; bạn chỉ phân loại rủi ro dựa trên giấy phép và q
 
 Kết thúc bằng tóm tắt ngắn: bài chọn (đường dẫn, BPM, độ chắc), thông số, lưới beat, điều cần người dùng xác nhận
 (bản quyền, có muốn nghe thử không).
+
+## Nguồn nhạc TikTok (người dùng muốn càng nhiều link dùng được càng tốt)
+
+- Môi trường chạy của bạn thường CHẶN TikTok (không mở được trang âm thanh `tiktok.com/music/...`). Thử một lần; nếu bị chặn, ghi
+  "chưa mở được TikTok từ môi trường này" và đừng bịa link. Không đoán đường dẫn âm thanh TikTok, không bịa tên bài đang trend.
+- Thay vào đó, mỗi ứng viên có trường `tiktok_search`: **từ khoá để người dùng tự tìm trong TikTok** (tên bài + nghệ sĩ, hoặc "ukulele vui ẩm thực"),
+  kèm lưu ý: tài khoản doanh nghiệp / bài có hợp tác chỉ nên chọn âm thanh trong **Thư viện nhạc thương mại** của TikTok; âm thanh
+  của hãng đĩa nổi tiếng (ví dụ bài Giáng sinh thương mại) có rủi ro cao khi dùng cho bài quảng cáo. Điều khoản chính xác phải do người dùng đọc trên TikTok.
+- Link ngoài TikTok vẫn ghi như cũ (trang bán, thư viện miễn phí) kèm giấy phép đã đọc.
+- Khi người dùng đã chọn nhạc (`director.musicPick`) hoặc nói sẽ tự thêm nhạc trên TikTok: BÀN GIAO cho Điều phối (ghi `studio/<slug>.members`:
+  `video-music-picker` → "xong" kèm note việc đã giao; `claude-chinh` → "nghi" hoặc việc kế tiếp). Không để trạng thái "chờ bạn" sau khi người dùng đã chọn.
