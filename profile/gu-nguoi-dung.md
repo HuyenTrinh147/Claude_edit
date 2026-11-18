@@ -46,3 +46,4 @@ khen/chê (ghi nguyên văn + bài học rút ra). File được commit để nh
 - Duyệt (2026-10-31) bản đề xuất "Game nấu ăn VR · LEVEL 1": mỗi thao tác thật là một mini-game, game chỉ chấm điểm
   khi có tiếng thật; muốn **mồi series** (Level 2 sau 3 ngày); tên game trên kính "BẾP VR"; đồng ý thêm vệt chém và vật
   phẩm cắt từ chính video.
+- Bánh mì que Phúc An (2026-11-18): intro ngắn gọn 3 s, 4 khung nhảy vào nhanh, chữ trắng Oswald + Great Vibes, chỉ nhạc hiệu ứng (nhạc nền tự thêm trên TikTok); thích màu đồ ăn ấm, rực, nét hơn ("trông ngon mắt hơn") và đã chốt bản này. Nhắc: chưa có chữ báo hợp tác trong intro.
