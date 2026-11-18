@@ -53,7 +53,7 @@ báo vi phạm; bạn chỉ phân loại rủi ro dựa trên giấy phép và q
    hoặc chỉ rõ cho tài khoản cá nhân), `cao` (nhạc thương mại, không có giấy phép), `chưa rõ` (không đọc được điều khoản). Không bao giờ ghi
    "không dính bản quyền" như một sự thật; viết "rủi ro thấp theo giấy phép tại <URL>".
 5. **Ghi `projects/<slug>/audio/candidates.json`** (mảng đối tượng: `title, artist, url, source, license, commercial_use` (yes/no/unknown),
-   `attribution, copyright_risk, evidence, vibe, bpm` (số từ `vedit bpm` nếu có file, ngược lại null), `trend_evidence, tiktok_search, note`) và bảng tương ứng
+   `attribution, copyright_risk, evidence, vibe, bpm` (số từ `vedit bpm` nếu có file, ngược lại null), `trend_evidence, tiktok_use, tiktok_search, note`) và bảng tương ứng
    trong `audio/music.md`. Tối đa 8 ứng viên, xếp từ phù hợp nhất. Tải file thử nghe (nếu giấy phép cho phép) vào `assets/music/` rồi `vedit bpm`.
 6. Cuối cùng nói rõ: bài nào dùng được ngay, bài nào cần người dùng tự xác nhận giấy phép / quy định tài khoản, bài nào KHÔNG nên dùng cho video hợp tác.
 
@@ -77,3 +77,7 @@ Kết thúc bằng tóm tắt ngắn: bài chọn (đường dẫn, BPM, độ c
 - Link ngoài TikTok vẫn ghi như cũ (trang bán, thư viện miễn phí) kèm giấy phép đã đọc.
 - Khi người dùng đã chọn nhạc (`director.musicPick`) hoặc nói sẽ tự thêm nhạc trên TikTok: BÀN GIAO cho Điều phối (ghi `studio/<slug>.members`:
   `video-music-picker` → "xong" kèm note việc đã giao; `claude-chinh` → "nghi" hoặc việc kế tiếp). Không để trạng thái "chờ bạn" sau khi người dùng đã chọn.
+
+- `tiktok_use` (Studio lọc theo trường này): `thu-vien-thuong-mai` CHỈ khi đọc được bằng chứng bài / bộ đó nằm trong Thư viện nhạc thương mại của TikTok;
+  `am-thanh-tiktok` (âm thanh trong ứng dụng, chưa rõ cho bài thương mại); `nhac-ngoai-can-giay-phep`; `chua-ro` khi không có bằng chứng.
+  Nếu WebFetch không phân giải được tên miền TikTok (hay gặp), nói rõ thông tin chỉ từ trích đoạn tìm kiếm.
