@@ -272,6 +272,11 @@ class Look(_Model):
         "none", description="Tông màu: warm_food (ấm, tươi cho đồ ăn), bright_clean, film, moody, vivid, bw")
     vignette: float = Field(0, ge=0, le=1, description="Tối góc khung (0..1)")
     grain: float = Field(0, ge=0, le=1, description="Hạt film (0..1)")
+    saturation: float = Field(1.0, ge=0.5, le=1.8, description="Nhân độ rực màu (1 = giữ nguyên); `vedit grade` đề xuất theo nội dung")
+    contrast: float = Field(1.0, ge=0.7, le=1.5, description="Nhân tương phản (1 = giữ nguyên)")
+    brightness: float = Field(0.0, ge=-0.2, le=0.2, description="Cộng độ sáng (0 = giữ nguyên)")
+    warmth: float = Field(0.0, ge=-1, le=1, description="Đẩy ấm (+) hoặc lạnh (−), 0 = giữ nguyên")
+    sharpen: float = Field(0.0, ge=0, le=1, description="Làm nét (unsharp), 0 = không")
 
 
 class AudioTrack(_Model):

@@ -521,6 +521,39 @@ def cmd_bpm(args, settings) -> None:
     print("\nBPM là ước lượng (chắc < 0.3 = đoán). Dùng nhịp đầu + BPM để đặt các điểm cắt lên lưới beat.")
 
 
+def cmd_grade(args, settings) -> None:
+    """Measure frames and suggest (or apply) colour / sharpness values for the plan's `look`."""
+    import json
+    import shutil
+
+    from . import autograde
+    from .edl import EditPlan
+
+    target = Path(args.target)
+    plan_path = target if target.suffix == ".json" else settings.projects_dir / args.target / "edit_plan.json"
+    plan = EditPlan.model_validate_json(plan_path.read_text())
+    sources: list[tuple[Path, float]] = []
+    for spec in args.source or []:
+        f, _, t = spec.partition("@")
+        sources.append((Path(f), float(t or 1.0)))
+    if not sources:
+        for c in plan.clips[:: max(1, len(plan.clips) // 8)][:8]:
+            path = Path(plan.sources.get(c.source, c.source)) if hasattr(plan, "sources") else Path(c.source)
+            sources.append((path, c.start + 0.4 * (c.end - c.start)))
+    stats = autograde.measure(sources)
+    sug = autograde.suggest(stats, args.content)
+    print(f"Đo {len(sources)} khung ({args.content}): độ sáng {stats.luma:.2f}, dải {stats.spread:.2f}, rực {stats.saturation:.2f}, ấm {stats.warmth:+.2f}, nét {stats.sharpness:.3f}")
+    for n in sug.notes:
+        print("  -", n)
+    print("Đề xuất look:", json.dumps(sug.look, ensure_ascii=False))
+    if args.apply:
+        shutil.copyfile(plan_path, plan_path.with_suffix(".pre-grade.json"))
+        raw = json.loads(plan_path.read_text())
+        raw["look"] = {**raw.get("look", {}), **sug.look}
+        plan_path.write_text(json.dumps(raw, ensure_ascii=False, indent=1))
+        print(f"✓ đã ghi look vào {plan_path} (bản cũ: {plan_path.with_suffix('.pre-grade.json').name})")
+
+
 def cmd_textcheck(args, settings) -> None:
     """Hard-rule check of on-screen text in a project's / a bare edit_plan.json; writes script/textcheck.{json,md}."""
     import json
@@ -782,6 +815,13 @@ def build_parser() -> argparse.ArgumentParser:
     tc = sub.add_parser("textcheck", help="Soát chữ trên màn hình bằng luật cứng (thời gian đọc, số dòng, vùng an toàn, dấu)")
     tc.add_argument("target", help="Tên dự án hoặc file edit_plan.json")
     tc.set_defaults(func=cmd_textcheck)
+
+    gr = sub.add_parser("grade", help="Đo khung hình và đề xuất / áp dụng chỉnh màu + độ nét theo nội dung (đồ ăn: ấm, rực, nét hơn)")
+    gr.add_argument("target", help="Tên dự án hoặc file plan .json")
+    gr.add_argument("--content", default="food", choices=["food", "nguoi", "phong-canh", "mac-dinh"])
+    gr.add_argument("--source", action="append", help="file@giây để đo (lặp được); mặc định lấy từ các clip trong plan")
+    gr.add_argument("--apply", action="store_true", help="Ghi look vào plan (sao lưu .pre-grade.json)")
+    gr.set_defaults(func=cmd_grade)
 
     st = sub.add_parser("studio", help="Bảng điều khiển đội AI (web cục bộ): dự án đang ở bước nào, cổng duyệt, nút Chép")
     st.add_argument("--port", type=int, default=8765)

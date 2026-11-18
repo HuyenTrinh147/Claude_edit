@@ -181,6 +181,13 @@ SFX.update({
 def look_filters(plan: EditPlan) -> list[str]:
     look = plan.look
     filters = [LOOKS[look.preset]] if look.preset in LOOKS else []
+    if (look.saturation, look.contrast, look.brightness) != (1.0, 1.0, 0.0):
+        filters.append(f"eq=contrast={look.contrast:.3f}:saturation={look.saturation:.3f}:brightness={look.brightness:.3f}")
+    if look.warmth:
+        w = look.warmth
+        filters.append(f"colorbalance=rs={0.07 * w:.3f}:gs={0.01 * w:.3f}:bs={-0.08 * w:.3f}:rm={0.05 * w:.3f}:bm={-0.05 * w:.3f}:rh={0.02 * w:.3f}:bh={-0.03 * w:.3f}")
+    if look.sharpen > 0:
+        filters.append(f"unsharp=5:5:{1.1 * look.sharpen:.3f}:5:5:0")
     if look.vignette > 0:
         filters.append(f"vignette=angle={0.25 + 0.65 * look.vignette:.3f}")
     if look.grain > 0:
