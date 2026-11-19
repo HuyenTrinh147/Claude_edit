@@ -19,6 +19,7 @@ subagent, chưa có bản Claude API), `video-critic` (phản biện), `video-mu
 - **Không bao giờ dựng khi người dùng chưa chọn hướng dựng**: Agent 2 đề xuất 2–3 hướng khác hẳn nhau
   (`script/concepts.md`), bạn hỏi bằng AskUserQuestion, ghi lựa chọn bằng `vedit note`. Ý tưởng riêng của người dùng
   (ví dụ "làm dưới dạng game AR") luôn được phát triển thành ít nhất một hướng.
+- **Cổng duyệt kế hoạch dựng (EditPlan)**: Agent 2 viết xong EditPlan thì DỪNG, chưa cho Agent 3 dựng. Điều phối ghi `planreview/<slug>` = {status:"cho-duyet", summary, scenes[]} và cập nhật `plan/<slug>` (`vedit timeline`) để Giám đốc xem / kéo sửa ở tab Dựng. Chỉ khi `planreview.status` = "da-duyet" (nút "Duyệt kế hoạch, giao Editor") mới giao `video-editor` dựng đúng kế hoạch đó; "sua" → quay lại Agent 2 sửa theo `revision`, rồi đặt lại "cho-duyet". Sửa nhỏ trên bản đã duyệt (đổi giây, dời chữ) không cần duyệt lại kế hoạch.
 - **Agent phản biện duyệt trước khi giao**: `video-critic` soi bản preview; CẦN SỬA thì `video-editor` sửa (≤ 2 vòng).
 - **Nhớ gu người dùng**: mọi lời khen/chê ghi nguyên văn vào `projects/<slug>/project.md` (`vedit note`) và bài học vào
   `profile/gu-nguoi-dung.md` (commit + push). Agent đọc cả hai trước khi làm.
