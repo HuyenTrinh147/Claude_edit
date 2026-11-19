@@ -41,7 +41,7 @@ subagent, chưa có bản Claude API), `video-critic` (phản biện), `video-mu
   cover/contain/blur, `clip.scale` phóng to (>1) / thu nhỏ giữa nền mờ (<1) quanh `focus_x/y`, freeze bằng tpad, look màu, zoom/punch/shake bằng `perspective` (mượt dưới pixel), SFX tổng hợp
   bằng aevalsrc (+ 8-bit, pitch bằng asetrate), amix + sidechaincompress + loudnorm).
 - `vedit/ass.py` — lớp libass: chữ động + nền sticker, phụ đề, đồ hoạ vector (callout, badge, progress bar, highlight,
-  sparkles, flash); `FontBook` chuẩn hoá cỡ chữ theo metric win của font và đổi tên family sang tên libass nhận.
+  sparkles, flash); `FontBook` chuẩn hoá cỡ chữ theo metric win của font và đổi tên family sang tên libass nhận. `TextOverlay.jitter` (px) + `jitter_hz`: chữ rung nhẹ như xèo — tách event thành các đoạn 40 ms với `\move` + `\frz` theo tổng sin xác định, vào/ra êm, bắt đầu sau khi hiệu ứng hiện xong (không áp cho chữ có `shape`).
 - `vedit/media.py` — ffprobe, dò cảnh/khoảng lặng, trích khung hình, faster-whisper (tuỳ chọn).
 - `vedit/track.py` — bám vật bằng OpenCV CSRT (extra `track`), tự dừng ở điểm cắt cảnh → `analysis/tracks/<tên>.json`.
 - `vedit/world.py` — quy đổi toạ độ nguồn (track) → pixel khung ở từng frame, theo đúng hình học của render (layout

@@ -162,6 +162,9 @@ class TextOverlay(_Model):
     x: float | None = Field(None, ge=0, le=1, description="Tâm ngang tuỳ chỉnh (0..1); bỏ trống = giữa")
     y: float | None = Field(None, ge=0, le=1, description="Tâm dọc tuỳ chỉnh (0..1); ghi đè position")
     rotation: float = Field(0, ge=-30, le=30, description="Nghiêng chữ kiểu sticker (độ, dương = ngược kim đồng hồ)")
+    jitter: float = Field(0, ge=0, le=30, description="Rung nhẹ chữ như đang xèo: biên độ (px) theo x/y; 0 = tắt. Bắt đầu sau "
+                                                      "khi chữ hiện xong, êm vào / êm ra; góc xoay rung tự tính ≈ 0,4°/px (tối đa 2°)")
+    jitter_hz: float = Field(10, ge=1, le=20, description="Tần số rung (Hz) khi jitter > 0")
     style: str | None = Field(
         None, description="Tên form chữ trong thư viện (`vedit styles`): điền sẵn font, cỡ, màu, viền, nền, hiệu ứng, độ "
                           "cao. Trường nào bạn ghi rõ cạnh `style` thì thắng preset")

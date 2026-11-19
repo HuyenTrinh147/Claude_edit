@@ -111,3 +111,39 @@ def test_render_creative_plan(tmp_path):
     peak = float(out.split("max_volume: ")[1].split(" dB")[0])
     assert peak > -30
     assert json.loads(json.dumps(plan.model_dump()))["graphics"][0]["type"] == "callout"
+
+
+def _jitter_events(**kw):
+    import re
+    plan = EditPlan.model_validate(creative_plan(texts=[
+        {"text": "xèo xèo", "start": 0.2, "end": 2.0, "font": "Mali", "x": 0.5, "y": 0.5, "animation": "word_pop", **kw}],
+        graphics=[], motion=[], audio=[]))
+    ass = build_ass(plan, "Be Vietnam Pro", FONTS)
+    return [ln for ln in ass.splitlines() if ln.startswith("Dialogue: 6")], re
+
+
+def test_text_jitter_stays_within_amplitude_and_eases_out():
+    evs, re = _jitter_events(jitter=4, jitter_hz=10)
+    assert len(evs) > 10
+    cx, cy = 180, 320
+    moved = [re.search(r"\\move\(([-\d.]+),([-\d.]+),([-\d.]+),([-\d.]+)\)", e) for e in evs]
+    moved = [m for m in moved if m]
+    assert moved
+    for m in moved:
+        x1, y1, x2, y2 = map(float, m.groups())
+        assert abs(x1 - cx) <= 4.01 and abs(x2 - cx) <= 4.01 and abs(y1 - cy) <= 4.01 and abs(y2 - cy) <= 4.01
+    assert max(abs(float(m.group(1)) - cx) for m in moved) > 1.0  # really moves
+    for e in evs:
+        for r in re.findall(r"\\frz(-?[\d.]+)", e):
+            assert abs(float(r)) <= 1.61
+    assert evs[-1].count(r"\fad(0,120)") == 1 and sum(r"\fad(0,120)" in e for e in evs) == 1
+    assert r"\move" not in evs[0]  # entry (word pop) plays unjittered
+    ends = [e.split(",")[2] for e in evs]
+    assert ends[-1] == "0:00:02.00"
+
+
+def test_text_jitter_zero_is_unchanged():
+    evs, _ = _jitter_events()
+    assert len(evs) == 1 and r"\move" not in evs[0]
+    evs2, _ = _jitter_events(jitter=0)
+    assert evs == evs2

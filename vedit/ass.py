@@ -281,8 +281,9 @@ def _entry_tags(anim: str, cx: float, cy: float, bbox: tuple[float, float, float
     return r"\fad(0,120)", False  # none, typewriter, word_pop (handled per character / word)
 
 
-def _staggered(text: str, anim: str) -> str:
-    """Typewriter (per character) or word_pop (per word) reveal using inline alpha tags."""
+def _staggered(text: str, anim: str, shift_ms: int = 0) -> str:
+    """Typewriter (per character) or word_pop (per word) reveal using inline alpha tags. `shift_ms` makes the reveal
+    timings relative to an event that starts that much later (used when an event is split for jitter)."""
     out, k = [], 0
     if anim == "typewriter":
         visible = [c for c in text if c not in " \n"]
@@ -292,7 +293,7 @@ def _staggered(text: str, anim: str) -> str:
                 out.append(r"\N" if ch == "\n" else " ")
                 continue
             t = k * step
-            out.append(rf"{{\alpha&HFF&\t({t},{t + 1},\alpha&H00&)}}{ass_text(ch)}")
+            out.append(rf"{{\alpha&HFF&\t({t - shift_ms},{t + 1 - shift_ms},\alpha&H00&)}}{ass_text(ch)}")
             k += 1
         return "".join(out)
     for li, line in enumerate(text.split("\n")):
@@ -302,9 +303,42 @@ def _staggered(text: str, anim: str) -> str:
             if wi:
                 out.append(" ")
             t = k * 140
-            out.append(rf"{{\alpha&HFF&\fscy40\t({t},{t + 160},\alpha&H00&\fscy100)}}{ass_text(word)}")
+            out.append(rf"{{\alpha&HFF&\fscy40\t({t - shift_ms},{t + 160 - shift_ms},\alpha&H00&\fscy100)}}{ass_text(word)}")
             k += 1
     return "".join(out)
+
+
+def _entry_ms(t: TextOverlay, raw: str) -> int:
+    """How long the entry animation of a text takes (jitter starts after it)."""
+    if t.animation == "word_pop":
+        return len(raw.replace("\n", " ").split()) * 140 + 160
+    if t.animation == "typewriter":
+        n = len([c for c in raw if c not in " \n"])
+        return max(25, min(60, 900 // max(n, 1))) * n + 20
+    return {"none": 0, "fade": 220, "pop": 260, "bounce": 400, "blur_in": 320, "wipe": 420}.get(t.animation, 300)
+
+
+def jitter_track(t0: float, t1: float, amp: float, hz: float, seed: int, fps_cs: int = 4) -> list[tuple[float, float, float, float]]:
+    """Smooth deterministic wobble knots (time, dx, dy, drot) every `fps_cs` centiseconds between t0 and t1.
+    Sum of incommensurate sines (not white noise) so it reads as a sizzle, not a glitch; the amplitude eases in
+    over 0.2 s and out over 0.3 s so the text settles before it fades."""
+    import math
+    import random
+    rng = random.Random(seed)
+    ph = [rng.uniform(0, 2 * math.pi) for _ in range(3)]
+    rot_amp = min(2.0, 0.4 * amp)
+    c0, c1 = round(t0 * 100), round(t1 * 100)
+    out = []
+    for c in range(c0, c1 + 1, fps_cs):
+        t = c / 100
+        env = min(1.0, (t - t0) / 0.2, (t1 - t) / 0.3)
+        env = math.sin(max(0.0, env) * math.pi / 2) ** 2
+        w = 2 * math.pi * hz * t
+        out.append((t, amp * env * math.sin(w + ph[0]), amp * env * math.sin(1.31 * w + ph[1]),
+                    rot_amp * env * math.sin(0.87 * w + ph[2])))
+    if out[-1][0] < t1:
+        out.append((t1, 0.0, 0.0, 0.0))
+    return out
 
 
 def text_events(texts: list[TextOverlay], W: int, H: int, default_font: str, fonts: FontBook) -> tuple[list[str], list[str]]:
@@ -334,6 +368,27 @@ def text_events(texts: list[TextOverlay], W: int, H: int, default_font: str, fon
         rot = t.rotation if t.rotation else (-2.0 if t.shape == "banner" else 0.0)
         rot_tag = rf"\frz{rot:g}" if rot else ""
 
+        jit = None
+        if t.jitter > 0:
+            ent = _entry_ms(t, raw) / 1000
+            j0 = round((t.start + ent) * 100) / 100
+            if t.end - j0 >= 0.4 and not has_shape:
+                jit = (j0, jitter_track(j0, t.end, t.jitter, t.jitter_hz, seed=i * 7919 + len(raw)))
+        if jit and not moves:
+            j0, knots = jit
+
+            def jevents(layer, style, body_fn, base_tags, entry_tags, base_rot):
+                evs = [_ev(layer, t.start, j0, style, rf"{{\an5{place}{rot_tag}{entry_tags}}}{body_fn(0)}")]
+                for k in range(len(knots) - 1):
+                    (ta, xa, ya, ra), (tb, xb, yb, rb) = knots[k], knots[k + 1]
+                    last = k == len(knots) - 2
+                    tg = (rf"\an5\move({_f(cx + xa)},{_f(cy + ya)},{_f(cx + xb)},{_f(cy + yb)})"
+                          rf"\frz{base_rot + ra:.2f}\t(\frz{base_rot + rb:.2f})" + (r"\fad(0,120)" if last else ""))
+                    evs.append(_ev(layer, ta, tb, style, rf"{{{tg}}}{body_fn(int((ta - t.start) * 1000))}"))
+                return evs
+        else:
+            jevents = None
+
         if has_shape:
             shape_anim = {"typewriter": "pop", "word_pop": "pop", "blur_in": "fade"}.get(t.animation, t.animation)
             shape_tags, _ = _entry_tags(shape_anim, cx, cy, bbox, W, H)
@@ -353,6 +408,13 @@ def text_events(texts: list[TextOverlay], W: int, H: int, default_font: str, fon
             outline_color=outline_color, back=ass_color(t.shadow_color, t.shadow_opacity), bold=t.bold,
             border_style=border_style, outline=outline, shadow=shadow, align=5, margin_lr=int(W * 0.05), margin_v=0))
         body = _staggered(raw, t.animation) if t.animation in ("typewriter", "word_pop") else ass_text(raw)
+        if jit and not moves:
+            import re
+            entry = re.sub(r"\\fad\((\d+),\d+\)", r"\\fad(\1,0)", tags)
+            staggered = t.animation in ("typewriter", "word_pop")
+            events += jevents(6, f"T{i}", lambda sh: _staggered(raw, t.animation, sh) if staggered else ass_text(raw),
+                              None, entry, rot)
+            continue
         events.append(_ev(6, t.start, t.end, f"T{i}", rf"{{\an5{place}{rot_tag}{tags}}}{body}"))
     return styles, events
 
