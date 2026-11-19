@@ -38,7 +38,7 @@ subagent, chưa có bản Claude API), `video-critic` (phản biện), `video-mu
 - `vedit/edl.py` — schema `EditPlan` (pydantic), hợp đồng giữa Agent 2 và Agent 3. Clip start/end = giây nguồn;
   texts/captions/audio = giây timeline.
 - `vedit/render.py` — EditPlan → một filter graph ffmpeg (timeline theo khung hình nguyên, concat/xfade, fit
-  cover/contain/blur, freeze bằng tpad, look màu, zoom/punch/shake bằng `perspective` (mượt dưới pixel), SFX tổng hợp
+  cover/contain/blur, `clip.scale` phóng to (>1) / thu nhỏ giữa nền mờ (<1) quanh `focus_x/y`, freeze bằng tpad, look màu, zoom/punch/shake bằng `perspective` (mượt dưới pixel), SFX tổng hợp
   bằng aevalsrc (+ 8-bit, pitch bằng asetrate), amix + sidechaincompress + loudnorm).
 - `vedit/ass.py` — lớp libass: chữ động + nền sticker, phụ đề, đồ hoạ vector (callout, badge, progress bar, highlight,
   sparkles, flash); `FontBook` chuẩn hoá cỡ chữ theo metric win của font và đổi tên family sang tên libass nhận.

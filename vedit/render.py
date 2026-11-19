@@ -299,8 +299,19 @@ def build_command(
             bg = canvas.background.lstrip("#")
             graph.append(f"{pre},scale={W}:{H}:force_original_aspect_ratio=decrease:force_divisible_by=2,"
                          f"pad={W}:{H}:(ow-iw)/2:(oh-ih)/2:color=0x{bg}[c{i}]")
+        elif clip.scale < 1:
+            # shrunk: the picture floats over a blurred copy of itself, like fit=blur but cropped to the smaller box
+            bw, bh = _even(W / 4), _even(H / 4)
+            fw, fh = _even(W * clip.scale), _even(H * clip.scale)
+            graph.append(f"{pre},split=2[c{i}a][c{i}b]")
+            graph.append(f"[c{i}a]scale={bw}:{bh}:force_original_aspect_ratio=increase,crop={bw}:{bh},"
+                         f"boxblur=10:2,scale={W}:{H},eq=brightness=-0.06[c{i}bg]")
+            graph.append(f"[c{i}b]scale={fw}:{fh}:force_original_aspect_ratio=increase,"
+                         f"crop={fw}:{fh}:(iw-{fw})*{clip.focus_x:g}:(ih-{fh})*{clip.focus_y:g}[c{i}fg]")
+            graph.append(f"[c{i}bg][c{i}fg]overlay=(W-w)/2:(H-h)/2[c{i}]")
         else:
-            graph.append(f"{pre},scale={W}:{H}:force_original_aspect_ratio=increase,"
+            sw, sh = _even(W * clip.scale), _even(H * clip.scale)
+            graph.append(f"{pre},scale={sw}:{sh}:force_original_aspect_ratio=increase,"
                          f"crop={W}:{H}:(iw-{W})*{clip.focus_x:g}:(ih-{H})*{clip.focus_y:g}[c{i}]")
 
         # hold the last frame first (freeze + 1 s of padding), then the Ken Burns camera, so a slow zoom keeps

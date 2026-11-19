@@ -100,6 +100,8 @@ class Clip(_Model):
     )
     focus_x: float = Field(0.5, ge=0, le=1, description="Tâm cắt ngang khi fit=cover (0 = trái, 1 = phải)")
     focus_y: float = Field(0.5, ge=0, le=1, description="Tâm cắt dọc khi fit=cover (0 = trên, 1 = dưới)")
+    scale: float = Field(1.0, ge=0.4, le=3.0, description="Phóng to / thu nhỏ TĨNH khi fit=cover: >1 phóng vào quanh tâm "
+                                                          "focus (cắt sát hơn), <1 thu nhỏ khung hình giữa nền mờ")
     zoom: Literal["none", "in", "out"] = Field("none", description="Hiệu ứng zoom chậm (Ken Burns)")
     zoom_amount: float = Field(0.12, ge=0.02, le=0.6)
     volume: float = Field(1.0, ge=0, le=4)

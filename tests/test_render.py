@@ -128,3 +128,16 @@ def test_audio_is_encoded_from_the_master_under_the_true_peak_ceiling(tmp_path):
     assert true_peak(raw) > -1.0                     # the encoder overshoots...
     fixed = tmp_path / "fixed.m4a"
     assert encode_audio(master, fixed, "128k") <= -1.0   # ...so the gain comes down until it does not
+
+
+@pytest.mark.parametrize("scale", [1.6, 0.6])
+def test_clip_scale_zooms_in_or_shrinks_with_blur(media, tmp_path, scale):
+    p = EditPlan.model_validate({"sources": {"main": str(media["land"])}, "canvas": {"width": 360, "height": 640},
+                                 "clips": [{"source": "main", "start": 0, "end": 1, "scale": scale, "focus_x": 0.3, "focus_y": 0.4}],
+                                 "export": {"filename": "o.mp4", "encoder_preset": "ultrafast"}})
+    cmd = build_command(p, tmp_path / "o.mp4", base_dir=tmp_path, work_dir=tmp_path / "w")
+    graph = cmd[cmd.index("-filter_complex") + 1]
+    assert ("boxblur=" in graph) == (scale < 1)
+    result = render(p, tmp_path / "o.mp4", base_dir=tmp_path, font="DejaVu Sans")
+    info = probe(result.output)
+    assert (info.width, info.height) == (360, 640)

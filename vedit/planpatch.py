@@ -168,6 +168,7 @@ def timeline(plan: EditPlan) -> dict:
         clips.append({"i": i, "source": c.source, "ss": round(c.start, 3), "se": round(c.end or 0, 3), "speed": c.speed,
                       "tl": round(offsets[i], 3), "dur": round(c.timeline_duration, 3), "freeze": c.freeze,
                       "mute": c.mute, "volume": c.volume, "fit": c.fit, "zoom": c.zoom, "zoom_amount": c.zoom_amount,
+                      "scale": c.scale, "focus_x": c.focus_x, "focus_y": c.focus_y,
                       "transition": ({"type": c.transition.type, "duration": c.transition.duration} if c.transition else None),
                       "note": c.note})
     total = plan.duration
