@@ -5,6 +5,10 @@ motion blocks). `apply_edits(plan, edits)` applies the user's edits one at a tim
 so a bad value is reported and skipped instead of corrupting the plan.
 
 An edit is ``{"id", "op": "set"|"delete", "path": "texts[3].text", "value": ..., "label": "..."}``.
+
+``{"op": "move", "path": "clips[9]", "after": 8}`` reorders clips: clip number 9 (as numbered in the plan the user saw) goes
+right after clip 8 (``after`` = -1 puts it first). Numbers always mean the ORIGINAL positions, so several moves and the
+set / delete edits in one batch never shift each other; moves run last, in the order given.
 """
 
 from __future__ import annotations
@@ -75,11 +79,35 @@ def append_path(plan: dict, path: str, value: Any) -> None:
     target.append(value)
 
 
+def move_clip(plan: dict, ids: list, path: str, after: int) -> None:
+    """Move the clip that was originally at `path` (clips[N]) to right after the clip that was originally `after`.
+    `ids` mirrors plan["clips"] with each clip's original index (None for appended clips)."""
+    keys = parse_path(path)
+    if len(keys) != 2 or keys[0] != "clips" or not isinstance(keys[1], int):
+        raise ValueError(f"chỉ dời được clip (clips[N]), nhận {path!r}")
+    src = keys[1]
+    if src not in ids:
+        raise ValueError(f"{path}: clip này đã bị xoá hoặc không có")
+    if after != -1 and after not in ids:
+        raise ValueError(f"không dời được ra sau clip {after}: clip đó đã bị xoá hoặc không có")
+    if after == src:
+        raise ValueError("không thể dời clip ra sau chính nó")
+    pos = ids.index(src)
+    clip = plan["clips"].pop(pos)
+    ids.pop(pos)
+    dest = 0 if after == -1 else ids.index(after) + 1
+    plan["clips"].insert(dest, clip)
+    ids.insert(dest, src)
+
+
 def apply_edits(plan: dict, edits: list[dict]) -> tuple[dict, list[dict], list[dict]]:
-    """Returns (new plan dict, applied edits, rejected edits with a `reason`). Order: sets, appends, then deletes
-    (highest index first, so earlier deletes never shift later ones)."""
+    """Returns (new plan dict, applied edits, rejected edits with a `reason`). Order: sets, appends, deletes
+    (highest index first, so earlier deletes never shift later ones), then clip moves (by original index)."""
     current = copy.deepcopy(plan)
     applied, rejected = [], []
+    ids: list = list(range(len(current.get("clips", []))))
+    moves = [e for e in edits if e.get("op") == "move"]
+    edits = [e for e in edits if e.get("op") != "move"]
     sets = [e for e in edits if e.get("op", "set") in ("set", "append")]
     sets.sort(key=lambda e: e.get("op") == "append")
     deletes = sorted((e for e in edits if e.get("op") == "delete"),
@@ -95,13 +123,37 @@ def apply_edits(plan: dict, edits: list[dict]) -> tuple[dict, list[dict], list[d
             else:
                 set_path(trial, e["path"], e.get("value"))
             EditPlan.model_validate(trial)
+            _track_clips(e, ids)
         except (ValueError, KeyError, IndexError, TypeError, ValidationError) as err:
             reason = "; ".join(x["msg"] for x in err.errors()[:2]) if isinstance(err, ValidationError) else str(err)
             rejected.append({**e, "reason": reason})
             continue
         current = trial
         applied.append(e)
+    for e in moves:
+        trial, trial_ids = copy.deepcopy(current), list(ids)
+        try:
+            move_clip(trial, trial_ids, e["path"], int(e.get("after", -1)))
+            EditPlan.model_validate(trial)
+        except (ValueError, KeyError, IndexError, TypeError, ValidationError) as err:
+            reason = "; ".join(x["msg"] for x in err.errors()[:2]) if isinstance(err, ValidationError) else str(err)
+            rejected.append({**e, "reason": reason})
+            continue
+        current, ids = trial, trial_ids
+        applied.append(e)
     return current, applied, rejected
+
+
+def _track_clips(e: dict, ids: list) -> None:
+    """Keep `ids` (original clip numbers) in step with deletes / appends on plan["clips"]."""
+    keys = parse_path(e["path"])
+    if keys[0] != "clips":
+        return
+    op = e.get("op", "set")
+    if op == "delete" and len(keys) == 2 and isinstance(keys[1], int) and 0 <= keys[1] < len(ids):
+        ids.pop(keys[1])
+    elif op == "append" and len(keys) == 1:
+        ids.append(None)
 
 
 def _sfx_len(name: str) -> float:

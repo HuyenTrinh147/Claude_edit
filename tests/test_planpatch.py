@@ -52,3 +52,31 @@ def test_append_adds_a_new_block_after_the_sets():
     assert new["texts"][-1]["text"] in ("mới",)  # the append is applied; the set on the not-yet-existing item was rejected first
     assert any(e["path"] == "texts[2].text" for e in rejected)
     assert apply_edits(base_plan(), [{"op": "append", "path": "clips", "value": {"nope": 1}}])[2]   # invalid element rejected
+
+
+def plan4():
+    p = base_plan()
+    p["clips"] = [{"source": "a", "start": i, "end": i + 1} for i in range(4)]
+    return p
+
+
+def test_move_clips_use_original_numbers_and_run_last():
+    new, applied, rejected = apply_edits(plan4(), [
+        {"op": "move", "path": "clips[1]", "after": 3}, {"op": "move", "path": "clips[2]", "after": 3},
+        {"path": "clips[1].end", "value": 1.5}])
+    assert not rejected and len(applied) == 3
+    assert [c["start"] for c in new["clips"]] == [0, 3, 2, 1] and new["clips"][3]["end"] == 1.5   # set used original number 1
+
+
+def test_move_to_front_and_rejects_bad_targets():
+    new, applied, rejected = apply_edits(plan4(), [
+        {"op": "move", "path": "clips[3]", "after": -1}, {"op": "move", "path": "clips[9]", "after": 0},
+        {"op": "move", "path": "clips[1]", "after": 1}, {"op": "move", "path": "texts[0]", "after": 0}])
+    assert [c["start"] for c in new["clips"]] == [3, 0, 1, 2]
+    assert len(applied) == 1 and len(rejected) == 3
+
+
+def test_move_skips_deleted_clips():
+    new, applied, rejected = apply_edits(plan4(), [
+        {"op": "delete", "path": "clips[2]"}, {"op": "move", "path": "clips[0]", "after": 3}, {"op": "move", "path": "clips[1]", "after": 2}])
+    assert [c["start"] for c in new["clips"]] == [1, 3, 0] and len(rejected) == 1
