@@ -94,6 +94,10 @@ class ClipGrade(_Model):
     contrast: float = Field(1.0, ge=0.7, le=1.5, description="Nhân tương phản riêng cho clip")
     saturation: float = Field(1.0, ge=0.5, le=1.8, description="Nhân độ rực riêng cho clip")
     warmth: float = Field(0.0, ge=-1, le=1, description="Đẩy ấm (+) / lạnh (−) riêng cho clip (cùng thang với look.warmth)")
+    shadows: float = Field(0.0, ge=-0.3, le=0.3, description="Nâng (+) / chìm (−) vùng tối bằng đường cong, giữ nguyên điểm trắng "
+                                                              "(nhân thịt tối rõ màu hơn mà không bệt)")
+    greens: float = Field(0.0, ge=-1, le=1, description="Độ rực riêng cho kênh xanh lá (+ = rau mùi, dưa chuột xanh hơn; "
+                                                         "không đụng da / bánh vàng)")
 
 
 class Clip(_Model):

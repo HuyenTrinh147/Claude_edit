@@ -191,6 +191,10 @@ def grade_filters(grade) -> list[str]:
     if (grade.brightness, grade.gamma, grade.contrast, grade.saturation) != (0.0, 1.0, 1.0, 1.0):
         out.append(f"eq=gamma={grade.gamma:.3f}:contrast={grade.contrast:.3f}:saturation={grade.saturation:.3f}"
                    f":brightness={grade.brightness:.3f}")
+    if grade.shadows:
+        out.append(f"curves=all='0/0 0.25/{0.25 + grade.shadows * 0.5:.4f} 0.6/{0.6 + grade.shadows * 0.2:.4f} 1/1'")
+    if grade.greens:
+        out.append(f"huesaturation=saturation={grade.greens:.3f}:colors=g:strength=1")
     if grade.warmth:
         out.append(warmth_filter(grade.warmth))
     return out

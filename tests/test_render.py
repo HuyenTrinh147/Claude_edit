@@ -156,3 +156,14 @@ def test_clip_grade_filters_and_graph():
     assert grade_filters(p.clips[1].grade) == []
     with pytest.raises(Exception):
         EditPlan.model_validate({"clips": [{"source": "color:#000000", "duration": 1, "grade": {"gamma": 5}}]})
+
+
+def test_clip_grade_shadows_greens():
+    from vedit.render import grade_filters
+    p = EditPlan.model_validate({"clips": [{"source": "color:#808080", "duration": 1,
+                                            "grade": {"shadows": 0.1, "greens": 0.3}}]})
+    f = grade_filters(p.clips[0].grade)
+    assert f[0].startswith("curves=") and "0.25/0.3000" in f[0]
+    assert f[1].startswith("huesaturation=saturation=0.300:colors=g")
+    with pytest.raises(Exception):
+        EditPlan.model_validate({"clips": [{"source": "color:#000000", "duration": 1, "grade": {"shadows": 0.9}}]})
