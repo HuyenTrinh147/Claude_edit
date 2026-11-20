@@ -305,6 +305,29 @@ def test_slash_and_video_sprites_draw(media, tmp_path):
         color_plan(hud=[{"type": "icon", "start": 0, "end": 1}])
 
 
+@needs_ffmpeg
+def test_sketch_ring_arrow_outline_draw_on_and_hold(media, tmp_path):
+    plan = EditPlan.model_validate({
+        "sources": {"main": str(media["land"])},
+        "canvas": {"width": 540, "height": 960, "fps": 30},
+        "clips": [{"source": "main", "start": 0, "end": 2.0}],
+        "hud": [
+            {"type": "sketch", "shape": "ring", "start": 0.2, "end": 1.8, "x": 0.4, "y": 0.2, "w": 0.5, "h": 0.08,
+             "color": "#FFD25A"},
+            {"type": "sketch", "shape": "arrow", "start": 0.4, "end": 1.8, "x": 0.4, "y": 0.25, "color": "#FFD25A",
+             "keys": [{"t": 0.4, "x": 0.35, "y": 0.5}, {"t": 1.8, "x": 0.4, "y": 0.55}]},
+            {"type": "sketch", "shape": "outline", "start": 0.6, "end": 1.8, "color": "#FFF3DC", "accent_color": "#FF9A3C",
+             "keys": [{"t": 0.6, "x": 0.5, "y": 0.6, "w": 0.8, "h": 0.4}, {"t": 1.8, "x": 0.5, "y": 0.65, "w": 0.9, "h": 0.5,
+                                                                          "rot": -5}]},
+        ]})
+    ass = build_ass(plan, "DejaVu Sans", Path("assets/fonts"), fps=30, base_dir=tmp_path, probe=probe)
+    lines = [ln for ln in ass.splitlines() if ln.startswith("Dialogue:") and "\\p1" in ln]
+    assert len(lines) > 30                           # drawn on over many frames, no gaps
+    assert "\\p1" in lines[0] and all("nan" not in ln for ln in lines)
+    with pytest.raises(ValidationError, match="trùng đuôi"):
+        color_plan(hud=[{"type": "sketch", "shape": "arrow", "start": 0, "end": 1, "x": 0.5, "y": 0.5}])
+
+
 # ---- fixes found while building the VR edit ------------------------------------------------------------
 
 @needs_ffmpeg

@@ -12,7 +12,7 @@ import math
 from dataclasses import dataclass, field
 
 from .ass import FontBook, alpha_tag, ass_text, ass_time, bgr
-from .edl import (Card, Counter, EditPlan, Icon, Meter, Panel, Popup, Prompt, Reticle, Slash, Slots, Sprite, ValueKey,
+from .edl import (Card, Counter, EditPlan, Icon, Meter, Panel, Popup, Prompt, Reticle, Sketch, Slash, Slots, Sprite, ValueKey,
                   Visor)
 from .world import World
 
@@ -1046,6 +1046,112 @@ def _slash(item: Slash, pen: Pen, t: float, W: int) -> None:
                   fill=item.accent_color if i % 3 else item.color, opacity=1 - q)
 
 
+# ---- hand-drawn sketches (ring / arrow / outline) ------------------------------------------------------
+
+def _catmull(keys: list, attr: str, t: float) -> float:
+    """Catmull-Rom through key values (clamped outside the key range)."""
+    vals = [getattr(k, attr) if getattr(k, attr) is not None else 0.0 for k in keys]
+    if t <= keys[0].t:
+        return vals[0]
+    if t >= keys[-1].t:
+        return vals[-1]
+    i = max(j for j in range(len(keys)) if keys[j].t <= t)
+    u = (t - keys[i].t) / (keys[i + 1].t - keys[i].t)
+    p0, p1, p2 = vals[max(i - 1, 0)], vals[i], vals[i + 1]
+    p3 = vals[min(i + 2, len(vals) - 1)]
+    return 0.5 * (2 * p1 + (p2 - p0) * u + (2 * p0 - 5 * p1 + 4 * p2 - p3) * u * u + (3 * p1 - p0 - 3 * p2 + p3) * u ** 3)
+
+
+def tapered_stroke(points, width: float, start: float = 0.55, end: float = 0.6) -> Path:
+    """Pen stroke: a polygon along `points` that fattens quickly from the pen-down and thins at the lift-off."""
+    n = len(points)
+    if n < 2:
+        return []
+    left, right = [], []
+    for i, (x, y) in enumerate(points):
+        a, b = points[max(i - 1, 0)], points[min(i + 1, n - 1)]
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        length = math.hypot(dx, dy) or 1.0
+        s = i / (n - 1)
+        w = width / 2 * (start + (1 - start) * clamp(s / 0.12)) * (end + (1 - end) * clamp((1 - s) / 0.12))
+        nx, ny = -dy / length * w, dx / length * w
+        left.append((x + nx, y + ny))
+        right.append((x - nx, y - ny))
+    return polygon(left + right[::-1])
+
+
+def _superellipse_stroke(cx, cy, a, b, n, rot, frac, width, turn=1.07, theta0=-140.0, wobble=0.03) -> Path:
+    """Hand-drawn closed loop round an (a, b) superellipse, started at theta0 and overshooting a bit; only the first
+    `frac` of the pen path is drawn."""
+    steps = max(int(110 * frac), 0)
+    if steps < 2:
+        return []
+    pts = []
+    cr, sr = math.cos(math.radians(rot)), math.sin(math.radians(rot))
+    for i in range(steps + 1):
+        s = frac * i / steps
+        th = math.radians(theta0) + 2 * math.pi * turn * s
+        f = 1 + wobble * math.sin(2 * th + 0.6) + 0.05 * s
+        c, sn = math.cos(th), math.sin(th)
+        x = a * f * math.copysign(abs(c) ** (2 / n), c)
+        y = b * f * math.copysign(abs(sn) ** (2 / n), sn)
+        pts.append((cx + x * cr + y * sr, cy - x * sr + y * cr))
+    return tapered_stroke(pts, width)
+
+
+def _sketch(item: Sketch, pen: Pen, t: float, W: int, H: int) -> None:
+    age = t - item.start
+    p = ease_out(clamp(age / item.draw))
+    if p <= 0.005:
+        return
+    ox, oy = pen.origin
+    keys = item.keys
+    ink = item.ink
+    color = item.color or "#FFD25A"
+    if item.shape in ("ring", "outline"):
+        if item.shape == "outline" and keys:
+            cx, cy = _catmull(keys, "x", t) * W, _catmull(keys, "y", t) * H
+            w = _catmull(keys, "w", t) if any(k.w for k in keys) else item.w
+            h = _catmull(keys, "h", t) if any(k.h for k in keys) else item.h
+            rot = _catmull(keys, "rot", t)
+        else:
+            cx, cy, w, h, rot = ox, oy, item.w, item.h, item.rot
+        path = _superellipse_stroke(cx - ox, cy - oy, w * W / 2, h * H / 2, item.roundness, rot, p, item.width)
+        if item.shape == "outline":
+            pen.shape("glow~", 1, path, fill=item.accent_color or color, opacity=0.55, border=5,
+                      border_color=item.accent_color or color, border_opacity=0.35, blur=7)
+            pen.shape("line", 2, path, fill=color, opacity=0.95)
+        else:
+            pen.shape("line", 2, path, fill=color, border=2.2, border_color=ink)
+        return
+    # arrow: curved shaft from the tail (x, y) to the head, then two wing strokes
+    tail = (ox, oy)
+    hx, hy = (_catmull(keys, "x", t) * W, _catmull(keys, "y", t) * H) if keys else (item.to_x * W, item.to_y * H)
+    dx, dy = hx - tail[0], hy - tail[1]
+    length = math.hypot(dx, dy) or 1.0
+    ctrl = ((tail[0] + hx) / 2 - dy / length * item.curve * length, (tail[1] + hy) / 2 + dx / length * item.curve * length)
+
+    def bez(u: float) -> tuple[float, float]:
+        return ((1 - u) ** 2 * tail[0] + 2 * (1 - u) * u * ctrl[0] + u * u * hx,
+                (1 - u) ** 2 * tail[1] + 2 * (1 - u) * u * ctrl[1] + u * u * hy)
+
+    n = max(int(40 * p), 2)
+    shaft = [bez(p * i / n) for i in range(n + 1)]
+    pen.shape("shaft", 2, tapered_stroke([(x - ox, y - oy) for x, y in shaft], item.width, 0.5, 1.0), fill=color,
+              border=2.2, border_color=ink)
+    q = ease_out(clamp((age - item.draw) / 0.16))
+    if q > 0.01:
+        ax, ay = bez(1.0)
+        bx, by = bez(0.94)
+        ang = math.atan2(ay - by, ax - bx)
+        wing = max(item.width * 5.6, 40) * q
+        for k, sgn in enumerate((1, -1)):
+            a = ang + math.pi + sgn * math.radians(30)
+            tip = (ax + wing * math.cos(a), ay + wing * math.sin(a))
+            pen.shape(f"wing{k}", 3, tapered_stroke([(ax - ox, ay - oy), (tip[0] - ox, tip[1] - oy)], item.width, 1.0, 0.7),
+                      fill=color, border=2.2, border_color=ink)
+
+
 # ---- driver -------------------------------------------------------------------------------------------
 
 def _themed(item, theme: Theme):
@@ -1114,6 +1220,8 @@ def hud_events(plan: EditPlan, world: World, fonts: FontBook, default_font: str)
             _visor(item, pen, t, W, H)
         elif item.type == "slash":
             _slash(item, pen, t, W)
+        elif item.type == "sketch":
+            _sketch(item, pen, t, W, H)
 
     for idx, item in enumerate(plan.hud):
         item = _themed(item, theme)

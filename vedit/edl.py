@@ -553,7 +553,46 @@ class Visor(_Hud):
     _nfc = field_validator("text", mode="before")(nfc)
 
 
-HudItem = Annotated[Union[Reticle, Panel, Meter, Counter, Popup, Slots, Card, Prompt, Icon, Visor, Slash],
+class SketchKey(_Model):
+    t: float = Field(ge=0, description="Timeline (giây)")
+    x: float = Field(ge=0, le=1)
+    y: float = Field(ge=0, le=1)
+    w: float | None = Field(None, gt=0, le=1.5, description="Rộng (tỉ lệ rộng khung); chỉ cho outline")
+    h: float | None = Field(None, gt=0, le=1.5, description="Cao (tỉ lệ cao khung); chỉ cho outline")
+    rot: float = Field(0, ge=-90, le=90, description="Nghiêng (độ, dương = ngược kim đồng hồ); chỉ cho outline")
+
+
+class Sketch(_Hud):
+    """Hand-drawn annotation, drawn on stroke by stroke: `ring` = loop round a label, `arrow` = curved arrow from
+    (x, y) to a target, `outline` = soft glowing ring hugging an object. `keys` move the target / outline over
+    time (hand-set keyframes, Catmull-Rom smoothed) so it can follow an object without a tracker."""
+
+    type: Literal["sketch"]
+    shape: Literal["ring", "arrow", "outline"] = "ring"
+    w: float = Field(0.4, gt=0, le=1.5, description="ring/outline: rộng (tỉ lệ rộng khung)")
+    h: float = Field(0.08, gt=0, le=1.5, description="ring/outline: cao (tỉ lệ cao khung)")
+    rot: float = Field(0, ge=-90, le=90, description="ring/outline: nghiêng (độ)")
+    roundness: float = Field(2.0, ge=1.5, le=4, description="2 = elip; 2.5-3 = góc bo kiểu bánh / thẻ")
+    keys: list[SketchKey] = Field(default_factory=list, description="arrow: đầu mũi tên theo thời gian (x,y); "
+                                                                   "outline: tâm + w/h/rot theo thời gian")
+    to_x: float = Field(0.5, ge=0, le=1, description="arrow: đầu mũi tên khi không có keys")
+    to_y: float = Field(0.5, ge=0, le=1)
+    curve: float = Field(0.18, ge=-0.6, le=0.6, description="arrow: độ cong thân (tỉ lệ độ dài)")
+    width: float = Field(9, ge=2, le=40, description="Độ dày nét (px)")
+    draw: float = Field(0.4, gt=0.05, le=3, description="Thời gian vẽ dần (giây)")
+    ink: str = Field("#3A1C0E", pattern=HEX_COLOR, description="Viền ngoài mảnh của nét cho dễ đọc trên nền sáng")
+    enter: HudEase = "none"
+    exit: HudEase = "fade"
+
+    @model_validator(mode="after")
+    def _keys(self):
+        if self.shape == "arrow" and not self.keys and (self.to_x, self.to_y) == (self.x, self.y):
+            raise ValueError("sketch arrow: đầu mũi tên trùng đuôi")
+        self.keys = sorted(self.keys, key=lambda k: k.t)
+        return self
+
+
+HudItem = Annotated[Union[Reticle, Panel, Meter, Counter, Popup, Slots, Card, Prompt, Icon, Visor, Slash, Sketch],
                     Field(discriminator="type")]
 
 
