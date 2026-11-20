@@ -178,14 +178,31 @@ SFX.update({
 })
 
 
+def warmth_filter(w: float) -> str:
+    return (f"colorbalance=rs={0.07 * w:.3f}:gs={0.01 * w:.3f}:bs={-0.08 * w:.3f}:rm={0.05 * w:.3f}:"
+            f"bm={-0.05 * w:.3f}:rh={0.02 * w:.3f}:bh={-0.03 * w:.3f}")
+
+
+def grade_filters(grade) -> list[str]:
+    """Per-clip colour correction (Clip.grade) -> ffmpeg filters; empty when the grade is neutral."""
+    if grade is None:
+        return []
+    out: list[str] = []
+    if (grade.brightness, grade.gamma, grade.contrast, grade.saturation) != (0.0, 1.0, 1.0, 1.0):
+        out.append(f"eq=gamma={grade.gamma:.3f}:contrast={grade.contrast:.3f}:saturation={grade.saturation:.3f}"
+                   f":brightness={grade.brightness:.3f}")
+    if grade.warmth:
+        out.append(warmth_filter(grade.warmth))
+    return out
+
+
 def look_filters(plan: EditPlan) -> list[str]:
     look = plan.look
     filters = [LOOKS[look.preset]] if look.preset in LOOKS else []
     if (look.saturation, look.contrast, look.brightness) != (1.0, 1.0, 0.0):
         filters.append(f"eq=contrast={look.contrast:.3f}:saturation={look.saturation:.3f}:brightness={look.brightness:.3f}")
     if look.warmth:
-        w = look.warmth
-        filters.append(f"colorbalance=rs={0.07 * w:.3f}:gs={0.01 * w:.3f}:bs={-0.08 * w:.3f}:rm={0.05 * w:.3f}:bm={-0.05 * w:.3f}:rh={0.02 * w:.3f}:bh={-0.03 * w:.3f}")
+        filters.append(warmth_filter(look.warmth))
     if look.sharpen > 0:
         filters.append(f"unsharp=5:5:{1.1 * look.sharpen:.3f}:5:5:0")
     if look.vignette > 0:
@@ -316,7 +333,7 @@ def build_command(
 
         # hold the last frame first (freeze + 1 s of padding), then the Ken Burns camera, so a slow zoom keeps
         # moving across a freeze frame (world.clip_zoom assumes exactly this)
-        post = ["setsar=1", "format=yuv420p", f"tpad=stop_mode=clone:stop_duration={_num(clip.freeze + 1)}"]
+        post = ["setsar=1", "format=yuv420p", *grade_filters(clip.grade), f"tpad=stop_mode=clone:stop_duration={_num(clip.freeze + 1)}"]
         if clip.zoom != "none":
             a = clip.zoom_amount
             post.append(camera(f"1+{a:g}*in/{n}" if clip.zoom == "in" else f"1+{a:g}-{a:g}*in/{n}"))

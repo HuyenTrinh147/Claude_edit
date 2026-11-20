@@ -87,6 +87,15 @@ class Transition(_Model):
     duration: float = Field(0.4, gt=0.05, le=2.0)
 
 
+class ClipGrade(_Model):
+    """Per-clip colour correction (applied before the joined timeline's global `look`), to match shots to one tone."""
+    brightness: float = Field(0.0, ge=-0.2, le=0.2, description="Cộng độ sáng riêng cho clip (0 = giữ nguyên)")
+    gamma: float = Field(1.0, ge=0.5, le=2.0, description="Gamma: >1 nâng vùng tối / giữa mà không cháy vùng sáng")
+    contrast: float = Field(1.0, ge=0.7, le=1.5, description="Nhân tương phản riêng cho clip")
+    saturation: float = Field(1.0, ge=0.5, le=1.8, description="Nhân độ rực riêng cho clip")
+    warmth: float = Field(0.0, ge=-1, le=1, description="Đẩy ấm (+) / lạnh (−) riêng cho clip (cùng thang với look.warmth)")
+
+
 class Clip(_Model):
     source: str = Field(
         description="Khóa trong EditPlan.sources, đường dẫn file (video/ảnh), hoặc 'color:#RRGGBB' cho thẻ màu"
@@ -109,6 +118,7 @@ class Clip(_Model):
     transition: Transition | None = Field(None, description="Chuyển cảnh TỪ clip trước VÀO clip này")
     freeze: float = Field(0, ge=0, le=10, description="Dừng hình ở khung cuối thêm N giây (freeze frame cho "
                                                       "khoảnh khắc thưởng / thẻ hoàn thành); tiếng gốc im lặng")
+    grade: ClipGrade | None = Field(None, description="Chỉnh màu / sáng riêng cho clip để đồng bộ tông giữa các cảnh")
     note: str = Field("", description="Vai trò của clip trong kịch bản (hook, b-roll, CTA...)")
 
     @model_validator(mode="after")

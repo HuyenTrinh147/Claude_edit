@@ -141,3 +141,18 @@ def test_clip_scale_zooms_in_or_shrinks_with_blur(media, tmp_path, scale):
     result = render(p, tmp_path / "o.mp4", base_dir=tmp_path, font="DejaVu Sans")
     info = probe(result.output)
     assert (info.width, info.height) == (360, 640)
+
+
+def test_clip_grade_filters_and_graph():
+    from vedit.render import grade_filters
+    assert grade_filters(None) == []
+    p = EditPlan.model_validate({
+        "clips": [{"source": "color:#808080", "duration": 1,
+                   "grade": {"gamma": 1.2, "saturation": 0.9, "warmth": 0.1}},
+                  {"source": "color:#808080", "duration": 1}],
+    })
+    f = grade_filters(p.clips[0].grade)
+    assert f[0].startswith("eq=gamma=1.200") and "saturation=0.900" in f[0] and f[1].startswith("colorbalance=")
+    assert grade_filters(p.clips[1].grade) == []
+    with pytest.raises(Exception):
+        EditPlan.model_validate({"clips": [{"source": "color:#000000", "duration": 1, "grade": {"gamma": 5}}]})
